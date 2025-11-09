@@ -1,0 +1,8 @@
+{
+  "name": "VisionCal",
+  "description": "An elegant, AI-powered calorie and nutrition tracker. Log meals using photos, and chat with an AI assistant to understand your diet and reach your goals.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

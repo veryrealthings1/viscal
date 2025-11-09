@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VisionCal: AI Nutrition Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --font-sans: 'Inter', sans-serif;
+
+        --color-background: 240 253 250; /* bg-gray-50 */
+        --color-foreground: 17 24 39; /* text-gray-900 */
+        --color-card: 255 255 255;
+        --color-card-foreground: var(--color-foreground);
+        --color-muted: 107 114 128; /* text-gray-500 */
+        --color-muted-foreground: 249 250 251;
+        --color-primary: 20 184 166; /* teal-500 */
+        --color-primary-foreground: 255 255 255;
+        --color-border: 229 231 235;
+        --color-ring: var(--color-primary);
+
+        --radius: 1.25rem;
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
+      }
+
+      .dark {
+        --color-background: 17 24 39; /* bg-gray-900 */
+        --color-foreground: 243 244 246; /* text-gray-100 */
+        --color-card: 31 41 55 / 0.5; /* bg-gray-800/50 */
+        --color-card-foreground: var(--color-foreground);
+        --color-muted: 156 163 175; /* text-gray-400 */
+        --color-muted-foreground: 55 65 81;
+        --color-primary: 94 234 212; /* teal-300 */
+        --color-primary-foreground: 17 24 39;
+        --color-border: 55 65 81;
+        --color-ring: var(--color-primary);
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: rgb(var(--color-background));
+        color: rgb(var(--color-foreground));
+        overflow: hidden; /* To contain the pseudo-element */
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(circle at 10% 20%, rgba(20, 184, 166, 0.1), transparent 40%),
+                    radial-gradient(circle at 80% 90%, rgba(99, 102, 241, 0.1), transparent 40%);
+        z-index: -1;
+        animation: aurora-glow 20s infinite alternate;
+        will-change: background;
+      }
+
+      .dark body::before {
+         background: radial-gradient(circle at 10% 20%, rgba(94, 234, 212, 0.1), transparent 40%),
+                    radial-gradient(circle at 80% 90%, rgba(129, 140, 248, 0.1), transparent 40%);
+      }
+
+      @keyframes aurora-glow {
+        0% {
+          transform: scale(1) rotate(0deg);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(1.5) rotate(10deg);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fade-in {
+        0% { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.4s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

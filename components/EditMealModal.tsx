@@ -1,0 +1,111 @@
+import React, { useState, useEffect } from 'react';
+import type { Meal, AnalyzedFoodItem, MealType, NutritionInfo } from '../types';
+import { useData } from '../hooks/useData';
+import { useUI } from '../hooks/useUI';
+import Card from './common/Card';
+import Icon from './common/Icon';
+import { initialNutrition } from '../services/utils';
+
+const EditMealModal: React.FC<{ meal: Meal }> = ({ meal }) => {
+  const { updateMeal } = useData();
+  const { setActiveModal, showToast } = useUI();
+  const [localMeal, setLocalMeal] = useState<Meal>(meal);
+
+  useEffect(() => {
+    setLocalMeal(meal);
+  }, [meal]);
+
+  const handleItemChange = (index: number, field: keyof AnalyzedFoodItem, value: string | number) => {
+    const newItems = [...localMeal.items];
+    const itemToUpdate = { ...newItems[index], [field]: value };
+    newItems[index] = itemToUpdate;
+    setLocalMeal(prev => ({ ...prev, items: newItems }));
+  };
+
+  const handleSaveChanges = () => {
+    // Recalculate total nutrition before saving
+    const totalNutrition = localMeal.items.reduce((acc, item) => {
+        for (const key in initialNutrition) {
+            const nutrientKey = key as keyof NutritionInfo;
+            if (typeof item[nutrientKey] === 'number') {
+                acc[nutrientKey] = (acc[nutrientKey] ?? 0) + (item[nutrientKey]!);
+            }
+        }
+        return acc;
+    }, { ...initialNutrition });
+
+    updateMeal(localMeal.id, { ...localMeal, nutrition: totalNutrition });
+    showToast("Meal updated successfully!");
+    setActiveModal(null);
+  };
+  
+  const mealTypes: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setActiveModal(null)}>
+      <Card className="w-full max-w-lg mx-auto relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <header className="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold">Edit Meal</h3>
+            <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <Icon path="M6 18L18 6M6 6l12 12" />
+            </button>
+        </header>
+        <div className="flex-1 overflow-y-auto space-y-4 p-1 pr-2 mt-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Meal Name</label>
+                <input
+                    type="text"
+                    value={localMeal.name}
+                    onChange={e => setLocalMeal(prev => ({ ...prev, name: e.target.value }))}
+                    className="mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Meal Type</label>
+                <select 
+                    value={localMeal.mealType} 
+                    onChange={e => setLocalMeal(prev => ({...prev, mealType: e.target.value as MealType}))}
+                    className="mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                    {mealTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                </select>
+            </div>
+
+            <h4 className="font-semibold pt-2">Items</h4>
+            {localMeal.items.map((item, index) => (
+                <div key={index} className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div className="col-span-2">
+                         <label className="text-xs font-medium">Name</label>
+                         <input type="text" value={item.name} onChange={e => handleItemChange(index, 'name', e.target.value)} className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm" />
+                    </div>
+                    <div>
+                         <label className="text-xs font-medium">Calories</label>
+                         <input type="number" value={item.calories} onChange={e => handleItemChange(index, 'calories', Number(e.target.value))} className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm" />
+                    </div>
+                    <div>
+                         <label className="text-xs font-medium">Protein (g)</label>
+                         <input type="number" value={item.protein} onChange={e => handleItemChange(index, 'protein', Number(e.target.value))} className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm" />
+                    </div>
+                     <div>
+                         <label className="text-xs font-medium">Carbs (g)</label>
+                         <input type="number" value={item.carbs} onChange={e => handleItemChange(index, 'carbs', Number(e.target.value))} className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm" />
+                    </div>
+                     <div>
+                         <label className="text-xs font-medium">Fat (g)</label>
+                         <input type="number" value={item.fat} onChange={e => handleItemChange(index, 'fat', Number(e.target.value))} className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 text-sm" />
+                    </div>
+                </div>
+            ))}
+
+        </div>
+        <footer className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+            <button onClick={handleSaveChanges} className="w-full bg-teal-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-600 transition-colors">
+                Save Changes
+            </button>
+        </footer>
+      </Card>
+    </div>
+  );
+};
+
+export default EditMealModal;
