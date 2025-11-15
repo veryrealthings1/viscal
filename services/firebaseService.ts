@@ -1,21 +1,8 @@
 import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/analytics';
 import 'firebase/compat/performance';
 
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  signInAnonymously, 
-  type Auth, 
-  type User,
-  GoogleAuthProvider,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut
-} from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { getAnalytics, logEvent, setUserId as setAnalyticsUserId } from 'firebase/analytics';
 import { getPerformance } from 'firebase/performance';
@@ -25,9 +12,7 @@ import type { UserProfile, Meal, NutritionInfo, Exercise, WaterLog, Recipe, Chat
 // --- Initialize Firebase ---
 const firebaseConfig = getFirebaseConfig();
 let app: firebase.app.App;
-let auth: Auth | undefined;
 let db: Firestore | undefined;
-let googleProvider: GoogleAuthProvider | undefined;
 let analytics: any; // Use 'any' to avoid build issues if Analytics isn't fully configured
 let performance: any; // Use 'any' for Performance Monitoring
 
@@ -38,13 +23,11 @@ try {
       app = firebase.app();
     }
     
-    auth = getAuth(app);
     db = getFirestore(app);
     if (typeof window !== 'undefined') {
         analytics = getAnalytics(app);
         performance = getPerformance(app);
     }
-    googleProvider = new GoogleAuthProvider();
 } catch (error) {
     console.error("Firebase initialization failed:", error);
 }
@@ -56,49 +39,6 @@ export const trackEvent = (eventName: string, params?: { [key: string]: any }) =
     return;
   }
   logEvent(analytics, eventName, params);
-};
-
-// --- Authentication ---
-export const onAuthChange = (callback: (user: User | null) => void) => {
-  if (!auth) {
-    console.error("Firebase Auth is not available.");
-    return () => {};
-  }
-  return onAuthStateChanged(auth, user => {
-    if (user && analytics) {
-      setAnalyticsUserId(analytics, user.uid);
-    }
-    callback(user);
-  });
-};
-
-export const signInWithGoogle = async (): Promise<User> => {
-    if (!auth || !googleProvider) throw new Error("Firebase Auth not initialized.");
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-};
-
-export const signInWithEmail = async (email: string, password: string): Promise<User> => {
-    if (!auth) throw new Error("Firebase Auth not initialized.");
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    return result.user;
-};
-
-export const createUser = async (email: string, password: string): Promise<User> => {
-    if (!auth) throw new Error("Firebase Auth not initialized.");
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    return result.user;
-};
-
-export const signInAnonymouslyUser = async (): Promise<User> => {
-    if (!auth) throw new Error("Firebase Auth not initialized.");
-    const userCredential = await signInAnonymously(auth);
-    return userCredential.user;
-};
-
-export const signOutUser = async (): Promise<void> => {
-    if (!auth) throw new Error("Firebase Auth not initialized.");
-    await signOut(auth);
 };
 
 
