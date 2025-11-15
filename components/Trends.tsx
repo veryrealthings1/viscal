@@ -47,7 +47,7 @@ const WeightChart: React.FC<{ weightHistory: UserProfile['weightHistory'] }> = (
             <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <path d={pathD} fill="none" stroke="rgb(var(--color-primary))" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" />
                 {points.map((p, i) => (
-                    // FIX: Replaced title attribute with SVG <title> child element for tooltip.
+                    // Fix: Replaced title attribute with SVG <title> child element for better accessibility.
                     <circle key={i} cx={p.x} cy={p.y} r="1" fill="rgb(var(--color-primary))" className="cursor-pointer">
                         <title>{`${data[i].date.toLocaleDateString()}: ${p.weight}kg`}</title>
                     </circle>

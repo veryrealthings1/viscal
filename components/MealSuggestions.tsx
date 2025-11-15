@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Meal, NutritionInfo, MealSuggestion, UserProfile } from '../types';
-import { getMealSuggestions, generateRecipe } from '../services/geminiService';
+import { getMealSuggestions, generateRecipe, generateImageForMeal } from '../services/geminiService';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import Icon from './common/Icon';
 import { useData } from '../hooks/useData';
 import { useUI } from '../hooks/useUI';
+
+interface MealSuggestionWithImage extends MealSuggestion {
+    imageUrl?: string;
+}
 
 const MealTypeIcon: React.FC<{ mealType: MealSuggestion['mealType'] }> = ({ mealType }) => {
     const iconMap: Record<MealSuggestion['mealType'], string> = {
@@ -21,7 +25,7 @@ const MealTypeIcon: React.FC<{ mealType: MealSuggestion['mealType'] }> = ({ meal
 const MealSuggestions: React.FC = () => {
     const { todaysNutrition, dailyGoal, meals, userProfile } = useData();
     const { setRecipe, setActiveModal } = useUI();
-    const [suggestions, setSuggestions] = useState<MealSuggestion[] | null>(null);
+    const [suggestions, setSuggestions] = useState<MealSuggestionWithImage[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGeneratingRecipe, setIsGeneratingRecipe] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -51,10 +55,24 @@ const MealSuggestions: React.FC = () => {
             }
 
             try {
-                // FIX: Explicitly typing `pastMealNames` as `string[]` fixes a type inference issue where it was being inferred as `unknown[]`.
+                // FIX: Using Array.from to ensure correct type inference from Set, resolving an issue where spread syntax was inferred as unknown[].
                 const pastMealNames: string[] = Array.from(new Set(meals.slice(-20).map(m => m.name)));
                 const result = await getMealSuggestions(remainingNutrients, pastMealNames, userProfile);
-                setSuggestions(result);
+                
+                // Generate images in parallel
+                const suggestionsWithImagesPromises = result.map(async (suggestion) => {
+                    try {
+                        const imageUrl = await generateImageForMeal(suggestion.name);
+                        return { ...suggestion, imageUrl };
+                    } catch (e) {
+                        console.error(`Failed to generate image for ${suggestion.name}`, e);
+                        return { ...suggestion, imageUrl: undefined }; // Fallback
+                    }
+                });
+                
+                const suggestionsWithImages = await Promise.all(suggestionsWithImagesPromises);
+                setSuggestions(suggestionsWithImages);
+
             } catch (e: any) {
                 setError(e.message || "Could not fetch suggestions.");
             } finally {
@@ -120,13 +138,28 @@ const MealSuggestions: React.FC = () => {
                 {suggestions.map((suggestion, index) => (
                     <div key={index} className="flex-shrink-0 w-72 snap-start">
                         <Card className="h-full flex flex-col p-5">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2 text-teal-600 dark:text-teal-400">
-                                    <MealTypeIcon mealType={suggestion.mealType} />
-                                    <p className="text-sm font-bold uppercase tracking-wider">{suggestion.mealType}</p>
-                                </div>
-                                <h3 className="font-bold text-lg mb-2 text-gray-800 dark:text-gray-100 min-h-[3.5rem]">{suggestion.name}</h3>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{suggestion.description}</p>
+                             <div className="flex-1">
+                                {suggestion.imageUrl ? (
+                                    <div className="relative w-full h-36 -mt-5 -mx-5 mb-4 rounded-t-3xl overflow-hidden group">
+                                        <img src={suggestion.imageUrl} alt={suggestion.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                                        <div className="absolute bottom-3 left-4 text-white">
+                                            <div className="flex items-center gap-2">
+                                                <MealTypeIcon mealType={suggestion.mealType} />
+                                                <p className="text-sm font-bold uppercase tracking-wider">{suggestion.mealType}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mb-2 text-teal-600 dark:text-teal-400">
+                                        <MealTypeIcon mealType={suggestion.mealType} />
+                                        <p className="text-sm font-bold uppercase tracking-wider">{suggestion.mealType}</p>
+                                    </div>
+                                )}
+                                <h3 className="font-bold text-lg mb-2 text-gray-800 dark:text-gray-100">{suggestion.name}</h3>
+                                {!suggestion.imageUrl && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">{suggestion.description}</p>
+                                )}
                             </div>
                             <div className="mt-4 flex flex-col gap-3">
                                 <span className="text-xs font-semibold bg-gray-200/80 dark:bg-gray-700/80 text-gray-800 dark:text-gray-200 px-2.5 py-1 rounded-full self-start">{suggestion.nutritionSummary}</span>

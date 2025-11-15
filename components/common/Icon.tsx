@@ -4,11 +4,12 @@ import React from 'react';
 interface IconProps {
   path: string;
   className?: string;
+  strokeWidth?: number;
 }
 
-const Icon: React.FC<IconProps> = ({ path, className = 'w-6 h-6' }) => {
+const Icon: React.FC<IconProps> = ({ path, className = 'w-6 h-6', strokeWidth = 1.5 }) => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d={path} />
     </svg>
   );

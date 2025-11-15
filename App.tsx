@@ -9,6 +9,7 @@ import Loader from './components/common/Loader';
 import { useData } from './hooks/useData';
 import type { UserProfile, NutritionInfo } from './types';
 import { checkAchievements } from './services/achievements';
+import Card from './components/common/Card';
 
 // Lazy load all modal components for performance
 const FoodLogger = React.lazy(() => import('./components/FoodLogger'));
@@ -26,6 +27,8 @@ const EditMealModal = React.lazy(() => import('./components/EditMealModal'));
 const LogExercise = React.lazy(() => import('./components/LogExercise'));
 const LiveCoachModal = React.lazy(() => import('./components/LiveCoachModal'));
 const RecipeBoxModal = React.lazy(() => import('./components/RecipeBoxModal'));
+const UpdateMealWithPhoto = React.lazy(() => import('./components/UpdateMealWithPhoto'));
+const ShareSummaryModal = React.lazy(() => import('./components/ShareSummaryModal'));
 
 
 const App: React.FC = () => {
@@ -40,10 +43,13 @@ const App: React.FC = () => {
     setStreakMilestone,
     recipe,
     mealToEdit,
+    mealToUpdateWithPhoto,
+    summaryToShare,
   } = useUI();
   
   const {
     dataLoaded,
+    userId,
     meals,
     dailyGoal,
     unlockedAchievements,
@@ -51,38 +57,40 @@ const App: React.FC = () => {
     currentStreak,
     setUserProfile,
     setDailyGoal,
+    markProfileAsComplete,
+    markTourAsComplete,
   } = useData();
   
   const handleOnboardingComplete = (profile: UserProfile, goals: NutritionInfo) => {
     setUserProfile(profile);
     setDailyGoal(goals);
-    localStorage.setItem('visioncal-profileComplete', 'true');
+    markProfileAsComplete();
     setActiveModal(null);
   };
   
   const handleTourComplete = () => {
-    localStorage.setItem('visioncal-tourComplete', 'true');
+    markTourAsComplete();
     setActiveModal(null);
   };
 
   useEffect(() => {
-    if (!dataLoaded) return;
+    if (!dataLoaded || !userId) return;
     const justUnlocked = checkAchievements(meals, dailyGoal, unlockedAchievements);
     if (justUnlocked.length > 0) {
       const newIds = justUnlocked.map(a => a.id);
       setUnlockedAchievements(prev => new Set([...prev, ...newIds]));
       setNewlyUnlocked(justUnlocked[0]);
     }
-  }, [meals, dailyGoal, unlockedAchievements, setUnlockedAchievements, setNewlyUnlocked, dataLoaded]);
+  }, [meals, dailyGoal, unlockedAchievements, setUnlockedAchievements, setNewlyUnlocked, dataLoaded, userId]);
 
   useEffect(() => {
-    if (!dataLoaded) return;
+    if (!dataLoaded || !userId) return;
     const milestones = [3, 7, 14, 30, 50, 100];
     if (currentStreak > 0) {
       const milestone = milestones.find(m => currentStreak === m);
       if (milestone) setStreakMilestone(milestone);
     }
-  }, [currentStreak, setStreakMilestone, dataLoaded]);
+  }, [currentStreak, setStreakMilestone, dataLoaded, userId]);
 
 
   const renderActiveModal = () => {
@@ -100,49 +108,60 @@ const App: React.FC = () => {
       case 'trends': return <Trends />;
       case 'recipe': return recipe ? <RecipeModal recipe={recipe} /> : null;
       case 'editMeal': return mealToEdit ? <EditMealModal meal={mealToEdit} /> : null;
+      case 'updateMealPhoto': return mealToUpdateWithPhoto ? <UpdateMealWithPhoto meal={mealToUpdateWithPhoto} /> : null;
       case 'liveCoach': return <LiveCoachModal />;
       case 'recipeBox': return <RecipeBoxModal />;
+      case 'shareSummary': return summaryToShare ? <ShareSummaryModal summary={summaryToShare} /> : null;
       default: return null;
     }
   };
 
+  if (!dataLoaded) {
+    return (
+        <main className="h-screen w-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <Loader text="Loading VisionCal..." />
+        </main>
+    );
+  }
+
   // Main App Body
   return (
-    <main className="h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col md:flex-row">
-      <div className="flex-1 overflow-y-auto">
-        {!dataLoaded && (
-          <div className="flex items-center justify-center h-full">
-            <Loader text="Loading your data..." />
-          </div>
-        )}
-        {dataLoaded && <Dashboard />}
-      </div>
-      <nav className="border-t border-gray-200 dark:border-gray-800 md:border-t-0 md:border-l order-first md:order-last">
-        <div className="flex justify-around items-center h-20 md:h-full md:flex-col md:w-24 md:py-8">
-          <button onClick={() => setActiveModal('log')} className="flex-1 flex flex-col items-center justify-center gap-1 text-white bg-teal-500 rounded-full w-16 h-16 shadow-lg shadow-teal-500/30 hover:bg-teal-600 transition-colors md:w-20 md:h-20 md:rounded-3xl">
-            <Icon path="M12 4.5v15m7.5-7.5h-15" className="w-8 h-8" />
-          </button>
-           <button onClick={() => setActiveModal('diary')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
-              <Icon path="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.185 0 4.236.624 6 1.742m6-16.25a8.967 8.967 0 01-6 2.292m6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.185 0-4.236.624-6 1.742m6-16.25v16.25" className="w-7 h-7" />
-              <span className="text-xs font-semibold">Diary</span>
-          </button>
-           <button onClick={() => setActiveModal('trends')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
-               <Icon path="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.517l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" className="w-7 h-7" />
-               <span className="text-xs font-semibold">Trends</span>
-           </button>
-           <button onClick={() => setActiveModal('profile')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
-              <Icon path="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" className="w-7 h-7" />
-              <span className="text-xs font-semibold">Profile</span>
-          </button>
+    <>
+      <main className="h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col md:flex-row">
+        <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
+          <Dashboard />
         </div>
-      </nav>
+        <nav className="fixed inset-x-4 bottom-4 z-40 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-full shadow-2xl border border-gray-200/80 dark:border-gray-700/80 md:relative md:inset-auto md:z-auto md:bg-transparent dark:md:bg-transparent md:backdrop-blur-none md:rounded-none md:shadow-none md:border-0 md:border-l md:border-gray-200 dark:md:border-gray-800 md:order-last">
+          <div className="flex justify-around items-center h-20 md:h-full md:flex-col md:w-24 md:py-8">
+            <button onClick={() => setActiveModal('logExercise')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                 <Icon path="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-1.383-.598 18.468 18.468 0 01-5.734-4.97m5.734-4.97a16.824 16.824 0 00-5.734-4.97m5.734 4.97l4.318 4.318a4.5 4.5 0 006.364-6.364l-4.318-4.318a4.5 4.5 0 00-6.364 6.364zm10.606-10.607a4.5 4.5 0 00-6.364 0l-4.318 4.318a4.5 4.5 0 000 6.364l4.318 4.318a4.5 4.5 0 006.364-6.364l-4.318-4.318z" className="w-7 h-7" />
+                 <span className="text-xs font-semibold">Activity</span>
+            </button>
+             <button onClick={() => setActiveModal('checker')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                <Icon path="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" className="w-7 h-7" />
+                <span className="text-xs font-semibold">Checker</span>
+            </button>
+            <button onClick={() => setActiveModal('log')} className="flex-1 flex flex-col items-center justify-center gap-1 text-white bg-teal-500 rounded-full w-16 h-16 shadow-lg shadow-teal-500/30 hover:bg-teal-600 transition-colors md:w-20 md:h-20 md:rounded-3xl">
+              <Icon path="M12 4.5v15m7.5-7.5h-15" className="w-8 h-8" />
+            </button>
+            <button onClick={() => setActiveModal('chat')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                <Icon path="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" className="w-7 h-7" />
+                <span className="text-xs font-semibold">AI Coach</span>
+            </button>
+             <button onClick={() => setActiveModal('profile')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                <Icon path="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" className="w-7 h-7" />
+                <span className="text-xs font-semibold">Profile</span>
+            </button>
+          </div>
+        </nav>
+      </main>
       <Suspense fallback={<div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center"><Loader /></div>}>
         {renderActiveModal()}
       </Suspense>
       {newlyUnlocked && <Toast achievement={newlyUnlocked} onClose={() => setNewlyUnlocked(null)} />}
       {toastMessage && <SimpleToast message={toastMessage} onClose={() => setToastMessage(null)} />}
       {streakMilestone && <StreakMilestoneToast milestone={streakMilestone} onClose={() => setStreakMilestone(null)} />}
-    </main>
+    </>
   );
 };
 

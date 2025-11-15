@@ -52,19 +52,21 @@ export async function decodeAudioData(
   return buffer;
 }
 
-export const playAudio = async (base64Audio: string) => {
+export const playAudio = async (base64Audio: string, audioContext: AudioContext) => {
   try {
-    const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    const outputNode = outputAudioContext.createGain();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    const outputNode = audioContext.createGain();
     const audioBuffer = await decodeAudioData(
       decode(base64Audio),
-      outputAudioContext,
+      audioContext,
       24000,
       1,
     );
-    const source = outputAudioContext.createBufferSource();
+    const source = audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    outputNode.connect(outputAudioContext.destination);
+    outputNode.connect(audioContext.destination);
     source.connect(outputNode);
     source.start();
   } catch (error) {
@@ -114,3 +116,16 @@ export const nutrientMetadata: Record<string, { label: string, unit: string }> =
 };
 
 export const limitNutrients = new Set(['calories', 'carbs', 'fat', 'saturatedFat', 'transFat', 'sugar', 'sodium', 'cholesterol']);
+
+export const calculateTotalNutrition = (items: AnalyzedFoodItem[]): NutritionInfo => {
+    return items.reduce((acc, item) => {
+        const quantity = item.quantity || 1;
+        for (const key in initialNutrition) {
+            const nutrientKey = key as keyof NutritionInfo;
+            if (typeof (item as any)[nutrientKey] === 'number') {
+                acc[nutrientKey] = (acc[nutrientKey] ?? 0) + ((item as any)[nutrientKey]! * quantity);
+            }
+        }
+        return acc;
+    }, { ...initialNutrition });
+};

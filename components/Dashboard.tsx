@@ -10,6 +10,7 @@ import AIInsight from './AIInsight';
 import { nutrientMetadata, limitNutrients } from '../services/utils';
 import { useData } from '../hooks/useData';
 import { useUI } from '../hooks/useUI';
+import Logo from './common/Logo';
 
 const DetailNutrient: React.FC<{ label: string, value: number, goal: number, unit: string, nutrientKey: keyof NutritionInfo }> = React.memo(({ label, value, goal, unit, nutrientKey }) => {
     const progress = goal > 0 ? (value / goal) * 100 : 0;
@@ -151,23 +152,23 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-8">
-      <header className="flex justify-between items-center gap-4 pt-4">
+      <header className="flex justify-between items-start gap-4 pt-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white">Today</h1>
-          <p className="text-gray-500 dark:text-gray-400">Welcome back!</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Logo className="w-8 h-8 text-teal-500 dark:text-teal-400" />
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">VisionCal</h1>
+          </div>
+          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white">Today</h2>
         </div>
         <div className="flex gap-2">
             <button onClick={() => setActiveModal('liveCoach')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
                 <Icon path="M12 18.75a6 6 0 006-6v-1.5a6 6 0 00-12 0v1.5a6 6 0 006 6z" className="w-6 h-6"/>
             </button>
-            <button onClick={() => setActiveModal('logExercise')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
-                <Icon path="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-1.383-.598 18.468 18.468 0 01-5.734-4.97m5.734-4.97a16.824 16.824 0 00-5.734-4.97m5.734 4.97l4.318 4.318a4.5 4.5 0 006.364-6.364l-4.318-4.318a4.5 4.5 0 00-6.364 6.364zm10.606-10.607a4.5 4.5 0 00-6.364 0l-4.318 4.318a4.5 4.5 0 000 6.364l4.318 4.318a4.5 4.5 0 006.364-6.364l-4.318-4.318z" className="w-6 h-6"/>
+            <button onClick={() => setActiveModal('diary')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
+                <Icon path="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.185 0 4.236.624 6 1.742m6-16.25a8.967 8.967 0 01-6 2.292m6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.185 0-4.236.624-6 1.742m6-16.25v16.25" className="w-6 h-6"/>
             </button>
-            <button onClick={() => setActiveModal('chat')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
-                <Icon path="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12a9 9 0 11-18 0 9 9 0 0118 0z" className="w-6 h-6"/>
-            </button>
-             <button onClick={() => setActiveModal('checker')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
-                <Icon path="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" className="w-6 h-6"/>
+             <button onClick={() => setActiveModal('trends')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
+                <Icon path="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.517l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" className="w-6 h-6"/>
             </button>
         </div>
       </header>
@@ -186,7 +187,7 @@ const Dashboard: React.FC = () => {
       </Card>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4 flex flex-col items-center justify-center">
+          <Card className="p-4 flex flex-col items-center justify-center gap-1">
             <RingProgress 
               value={todaysNutrition.calories}
               goal={dailyGoal.calories}
@@ -195,13 +196,16 @@ const Dashboard: React.FC = () => {
               size={120}
               color={caloriesColor}
             />
-            <div className="text-center -mt-2">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    - {Math.round(todaysCaloriesBurned)} Burned
-                </p>
-                <p className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">
-                    = {Math.round(netCalories)} Net
-                </p>
+            <div className="w-28 text-sm">
+                <div className="flex justify-between items-baseline">
+                    <span className="text-gray-500 dark:text-gray-400">Burned</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">-{Math.round(todaysCaloriesBurned)}</span>
+                </div>
+                <div className="w-full border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                <div className="flex justify-between items-baseline">
+                    <span className="font-bold text-gray-800 dark:text-gray-100">Net</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-100">{Math.round(netCalories)}</span>
+                </div>
             </div>
           </Card>
            <Card className="p-4 flex flex-col items-center justify-center">

@@ -52,7 +52,7 @@ const StreakMilestoneToast: React.FC<StreakMilestoneToastProps> = ({ milestone, 
                 {confetti}
             </div>
             <div className={`relative text-center p-8 transition-all duration-500 ease-out ${show ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
-                {/* Fix: Moved the style prop from the Icon component to its parent div wrapper. */}
+                {/* Fix: Moved the style prop to a wrapper div as it's not supported on the Icon component. */}
                 <div className="relative inline-block" style={{ filter: 'drop-shadow(0 0 20px #f97316)'}}>
                      <Icon path="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.62a8.983 8.983 0 013.362-3.867 8.262 8.262 0 013 2.457z" 
                         className="w-24 h-24 text-orange-400" 

@@ -37,9 +37,15 @@ export interface NutritionInfo {
   vitaminB12?: number; // Cobalamin in mcg
 }
 
+export interface AntiNutrient {
+  name: string;
+  description: string;
+}
 
 export interface AnalyzedFoodItem extends NutritionInfo {
   name: string;
+  quantity: number;
+  antiNutrients?: AntiNutrient[];
 }
 
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
@@ -48,11 +54,12 @@ export interface Meal {
   id: string;
   name: string;
   nutrition: NutritionInfo;
-  imageUrl?: string;
+  imageUrlBefore?: string; // Data URI
+  imageUrlAfter?: string; // Data URI
   items: AnalyzedFoodItem[];
   date: string; // ISO string for date
   time: string; // HH:mm format for time
-  source: 'photo' | 'manual' | 'barcode' | 'voice';
+  source: 'photo' | 'manual' | 'barcode' | 'voice' | 'recipe';
   mealType: MealType;
 }
 
@@ -91,7 +98,8 @@ export interface UserProfile {
   gender: 'male' | 'female' | 'other';
   activityLevel: 'Sedentary' | 'Lightly Active' | 'Moderately Active' | 'Very Active';
   aspirations: 'Weight Loss' | 'Muscle Gain' | 'Maintain Health' | 'Increase Energy';
-  dietaryPreference: 'non-vegetarian' | 'vegetarian' | 'vegan';
+  targetWeight?: number; // in kg
+  dietaryPreference: 'non-vegetarian' | 'vegetarian' | 'vegan' | 'pescetarian' | 'paleo' | 'keto';
   weightHistory: { date: string; weight: number }[];
 }
 
@@ -109,6 +117,8 @@ export interface AnalyzedProduct {
   verdict: string;
   highlights: string[];
   nutrients: NutrientDetail[];
+  antiNutrients?: AntiNutrient[];
+  genderWarnings?: { gender: 'male' | 'female'; warning: string }[];
 }
 
 export interface GoalSuggestion {
@@ -145,4 +155,11 @@ export interface DailyInsight {
   title: string;
   summary: string;
   icon: string;
+}
+
+// FIX: Add DailySummary interface to be used globally.
+export interface DailySummary {
+  date: string;
+  meals: Meal[];
+  totals: {calories: number, protein: number, carbs: number, fat: number};
 }

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, GoalSuggestion, MealSuggestion, WeeklyInsight, Meal, Recipe, Exercise, DailyInsight } from '../types';
+import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, GoalSuggestion, MealSuggestion, WeeklyInsight, Meal, Recipe, Exercise, DailyInsight, AntiNutrient } from '../types';
 
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable is not set");
@@ -7,10 +7,20 @@ if (!process.env.API_KEY) {
 
 export const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const antiNutrientSchema = {
+  type: Type.OBJECT,
+  properties: {
+    name: { type: Type.STRING, description: 'Name of the anti-nutrient (e.g., Oxalates).' },
+    description: { type: Type.STRING, description: 'A brief, simple explanation of its effect (e.g., "Can reduce calcium absorption").' },
+  },
+  required: ['name', 'description'],
+};
+
 const foodItemSchema = {
   type: Type.OBJECT,
   properties: {
     name: { type: Type.STRING, description: 'Name of the food item.' },
+    quantity: { type: Type.NUMBER, description: 'The serving size or proportion of the item. Defaults to 1 for a single-item analysis.' },
     calories: { type: Type.NUMBER, description: 'Estimated calories.' },
     protein: { type: Type.NUMBER, description: 'Estimated protein in grams.' },
     carbs: { type: Type.NUMBER, description: 'Estimated carbohydrates in grams.' },
@@ -45,8 +55,13 @@ const foodItemSchema = {
     vitaminB7: { type: Type.NUMBER, description: 'Estimated Biotin (B7) in micrograms.' },
     vitaminB9: { type: Type.NUMBER, description: 'Estimated Folate (B9) in micrograms.' },
     vitaminB12: { type: Type.NUMBER, description: 'Estimated Cobalamin (B12) in micrograms.' },
+    antiNutrients: { 
+      type: Type.ARRAY, 
+      items: antiNutrientSchema, 
+      description: 'A list of any significant anti-nutrients found in the food item and their effects.' 
+    },
   },
-  required: ['name', 'calories', 'protein', 'carbs', 'fat'],
+  required: ['name', 'quantity', 'calories', 'protein', 'carbs', 'fat'],
 };
 
 
@@ -63,7 +78,7 @@ export const analyzeFoodImage = async (base64Image: string): Promise<AnalyzedFoo
             },
           },
           {
-            text: 'Analyze the food items in this image. For each distinct item, provide its name and detailed estimated nutrition (calories, protein, carbs, fat, water, fiber, sugar, sodium, all relevant vitamins and minerals).',
+            text: 'Analyze the food items in this image. For each distinct item, provide its name and detailed estimated nutrition (calories, protein, carbs, fat, water, fiber, sugar, sodium, all relevant vitamins and minerals). Set the `quantity` field to 1 for each item. Crucially, differentiate between raw ingredients and the final cooked dish. For prepared meals like a burger, your analysis must account for cooking methods (e.g., frying), added fats, sauces, and other components that significantly alter the nutritional profile from just its raw ingredients. Also, identify any common anti-nutrients (like oxalates, phytates, lectins) and briefly describe their effects.',
           },
         ],
       },
@@ -96,7 +111,7 @@ export const analyzeFoodFromText = async (text: string): Promise<AnalyzedFoodIte
       contents: {
         parts: [
           {
-            text: `Analyze the food items in this description: "${text}". For each distinct item, provide its name and detailed estimated nutrition (calories, protein, carbs, fat, water, fiber, sugar, all relevant vitamins and minerals).`,
+            text: `Analyze the food items in this description: "${text}". For each distinct item, provide its name and detailed estimated nutrition (calories, protein, carbs, fat, water, fiber, sugar, all relevant vitamins and minerals). Set the 'quantity' field to 1 for each item. Crucially, differentiate between raw ingredients and the final cooked dish. For prepared meals like a burger, your analysis must account for cooking methods (e.g., frying), added fats, sauces, and other components that significantly alter the nutritional profile from just its raw ingredients. Also, identify any common anti-nutrients (like oxalates, phytates, lectins) and briefly describe their effects.`,
           },
         ],
       },
@@ -117,6 +132,45 @@ export const analyzeFoodFromText = async (text: string): Promise<AnalyzedFoodIte
   } catch (error) {
     console.error("Error analyzing food text:", error);
     throw new Error("Failed to analyze description. The AI may not have recognized any food or an error occurred.");
+  }
+};
+
+export const analyzeMealConsumption = async (base64ImageBefore: string, base64ImageAfter: string): Promise<AnalyzedFoodItem[]> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: base64ImageBefore } },
+          { text: 'This is the image of the meal BEFORE eating.' },
+          { inlineData: { mimeType: 'image/jpeg', data: base64ImageAfter } },
+          { text: `This is the image of the same meal AFTER eating (leftovers).
+
+          Your task is to:
+          1.  Analyze the "BEFORE" image to identify all food items and their detailed nutritional information for the full portion shown.
+          2.  Compare the "BEFORE" and "AFTER" images to estimate the proportion of each food item that was consumed. This should be a number between 0 (not eaten) and 1 (fully eaten).
+          3.  Return a JSON array of ALL food items identified in the "BEFORE" image. Each item in the array must contain the nutritional information for the FULL portion shown in the "BEFORE" image.
+          4.  Crucially, for each item, you MUST include a 'quantity' field set to the consumed proportion you estimated (e.g., 0.75 for 75% eaten). If an item was not eaten at all, set its quantity to 0.
+          5.  Also, identify any common anti-nutrients (like oxalates, phytates, lectins) and include them if present.
+          6.  The response must be only the JSON array, with no other text or markdown. If no food is identifiable, return an empty array.` },
+        ],
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: foodItemSchema,
+        },
+      },
+    });
+    
+    const jsonStr = response.text.trim();
+    const result = JSON.parse(jsonStr);
+    return result as AnalyzedFoodItem[];
+
+  } catch (error) {
+    console.error("Error analyzing meal consumption:", error);
+    throw new Error("Failed to analyze the meal leftovers. The AI may not have recognized the food or an error occurred.");
   }
 };
 
@@ -177,6 +231,15 @@ const nutrientDetailSchema = {
   required: ['name', 'value', 'unit', 'percentOfDailyGoal', 'isHigh'],
 };
 
+const genderWarningSchema = {
+    type: Type.OBJECT,
+    properties: {
+        gender: { type: Type.STRING, description: 'The gender this warning applies to: "male" or "female".' },
+        warning: { type: Type.STRING, description: 'A concise warning about potential negative effects for that gender.' },
+    },
+    required: ['gender', 'warning'],
+};
+
 const analyzedProductSchema = {
   type: Type.OBJECT,
   properties: {
@@ -185,6 +248,16 @@ const analyzedProductSchema = {
     verdict: { type: Type.STRING, description: 'A brief, personalized verdict (2-3 sentences) explaining the score and its potential effects on the user. Be encouraging and informative.' },
     highlights: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Up to 3 key highlights in plain language (e.g., "High in sodium", "Good source of fiber", "Contains artificial sweeteners").' },
     nutrients: { type: Type.ARRAY, items: nutrientDetailSchema, description: 'A detailed breakdown of key nutrients per serving. Always include Calories, Protein, Carbs, Fat, Sodium, and Sugar.' },
+    antiNutrients: { 
+      type: Type.ARRAY, 
+      items: antiNutrientSchema, 
+      description: 'A list of any significant anti-nutrients found in the product and their effects.' 
+    },
+    genderWarnings: {
+      type: Type.ARRAY,
+      items: genderWarningSchema,
+      description: 'A list of any gender-specific warnings related to the product (e.g., high phytoestrogens for males).',
+    }
   },
   required: ['name', 'score', 'verdict', 'highlights', 'nutrients'],
 };
@@ -200,7 +273,7 @@ export const analyzeProductImage = async (
     .map(([key, value]) => `- ${key}: ${value}`)
     .join('\n');
 
-  const prompt = `Analyze the food product in the image for a user who wants to know if they should eat it.
+  const prompt = `Analyze the food product in the image for a user who wants to know if they should eat it. When analyzing, consider not just the raw ingredients but also the overall composition and typical preparation method. For example, a raw potato is healthy, but deep-fried french fries are not. Your verdict should reflect the product as it's typically consumed.
 
 User Profile:
 - Age: ${age}
@@ -213,7 +286,9 @@ ${goalSummary}
 - General recommendation for Sodium: ~2300 mg
 - General recommendation for Sugar: ~30 g
 
-Based on the product label or your knowledge of the item, provide a detailed analysis. Assume a standard single serving size. Structure your response according to the provided JSON schema. The "verdict" must be personalized and easy to understand. The "score" should reflect overall healthiness for this specific user. The "nutrients" list must include at least Calories, Protein, Carbs, Fat, Sodium, and Sugar.`;
+Based on the product label or your knowledge of the item, provide a detailed analysis. Assume a standard single serving size. Structure your response according to the provided JSON schema. The "verdict" must be personalized and easy to understand. The "score" should reflect overall healthiness for this specific user. The "nutrients" list must include at least Calories, Protein, Carbs, Fat, Sodium, and Sugar. In addition, identify any significant anti-nutrients present in the product (e.g., oxalates in spinach, phytates in whole grains) and include them in the 'antiNutrients' array.
+
+Finally, consider the user's gender. If the product contains ingredients known to have specific negative effects for the user's gender (e.g., high phytoestrogens like soy for males concerned about testosterone, or items not recommended for females), add a concise, non-alarmist warning to the 'genderWarnings' array. Frame these as potential considerations, not absolute medical advice.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -279,35 +354,36 @@ const nutritionInfoSchemaProperties = {
 };
 const nutritionInfoSchema = {
     type: Type.OBJECT,
-    properties: {
-        ...nutritionInfoSchemaProperties,
-        // water and waterGoal are optional in the base type, but required here for a full goal set.
-        water: { type: Type.NUMBER, description: 'This should always be 0 in a goal calculation.' }, 
-    },
-    required: [...Object.keys(nutritionInfoSchemaProperties), 'water'],
+    properties: nutritionInfoSchemaProperties,
+    required: Object.keys(nutritionInfoSchemaProperties),
 };
 
 export const calculatePersonalizedGoals = async (userProfile: UserProfile): Promise<NutritionInfo> => {
-  const { age, weight, height, gender, aspirations, activityLevel } = userProfile;
-  const prompt = `Act as an expert nutritionist. Based on the following user profile, calculate a comprehensive and personalized set of daily nutritional goals. Provide values for all nutrients in the specified schema. The 'waterGoal' should be based on factors like weight and activity level.
+  const { age, weight, height, gender, aspirations, activityLevel, dietaryPreference, targetWeight } = userProfile;
+  const prompt = `Act as an expert nutritionist. Based on the following user profile, calculate a comprehensive and personalized set of daily nutritional goals. Provide values for all nutrients in the specified schema. The 'waterGoal' should be based on factors like weight and activity level. The goals should be appropriate for the user's dietary preference.
 
 User Profile:
 - Age: ${age} years
-- Weight: ${weight} kg
+- Current Weight: ${weight} kg
 - Height: ${height} cm
 - Gender: ${gender}
 - Activity Level: ${activityLevel}
 - Primary Goal/Aspiration: ${aspirations}
+${targetWeight ? `- Target Weight: ${targetWeight} kg` : ''}
+- Dietary Preference: ${dietaryPreference}
+
+If a target weight is provided, tailor the calorie and macronutrient goals to help the user move from their current weight to their target weight at a healthy pace (e.g., ~0.5kg/week loss or gain).
 
 Generate a complete JSON object with appropriate daily targets for all macros, vitamins, and minerals according to the provided schema.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-pro', 
+      model: 'gemini-2.5-flash', 
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: nutritionInfoSchema,
+        thinkingConfig: { thinkingBudget: 8192 },
       },
     });
 
@@ -416,7 +492,7 @@ ${remainingSummary}
 
 ${pastMealsSummary}
 
-Your task is to suggest 4 specific, healthy, and appealing meal ideas to help the user meet their remaining goals. Prioritize meals that fill the biggest nutritional gaps. For example, if protein is low, suggest protein-rich meals. Offer variety and try not to repeat meals the user has recently eaten.
+Your task is to suggest 4 specific, healthy, and appealing meal ideas to help the user meet their remaining goals. Prioritize meals that fill the biggest nutritional gaps. For example, if protein is low, suggest protein-rich meals. Offer variety and try not to repeat meals the user has recently eaten. When suggesting meals, emphasize healthy preparation methods (e.g., "grilled" or "steamed" instead of "fried").
 
 For each meal, provide a name, the type of meal (Breakfast, Lunch, Dinner, or Snack), a short description of why it's a good choice, and a brief nutrition summary. Structure your response according to the provided JSON schema.`;
 
@@ -507,11 +583,12 @@ Analyze this data to create a personalized weekly report. Identify trends, succe
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json",
                 responseSchema: weeklyInsightSchema,
+                thinkingConfig: { thinkingBudget: 4096 },
             },
         });
 
@@ -688,5 +765,37 @@ Your task is to generate a single, concise insight. This could be praise for hit
     } catch (error) {
         console.error("Error generating daily insight:", error);
         throw new Error("Failed to generate a daily insight.");
+    }
+};
+
+// --- Meal Suggestion Image Generation ---
+export const generateImageForMeal = async (mealName: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    {
+                        text: `A vibrant, abstract, and appetizing artistic illustration representing "${mealName}". Style: minimalist, modern, using geometric shapes and a pleasing color palette. Not a realistic photo.`,
+                    },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+        const parts = response.candidates?.[0]?.content?.parts;
+        if (parts) {
+            for (const part of parts) {
+                if (part.inlineData?.data) {
+                    const base64ImageBytes: string = part.inlineData.data;
+                    return `data:image/png;base64,${base64ImageBytes}`;
+                }
+            }
+        }
+        throw new Error("No image data received from API.");
+    } catch (error) {
+        console.error("Error generating image for meal suggestion:", error);
+        throw new Error("Failed to generate image for the meal suggestion.");
     }
 };

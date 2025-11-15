@@ -2,24 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Chat } from "@google/genai";
 import { FunctionDeclaration, Type } from "@google/genai";
 import type { ChatMessage, Meal, UserProfile, NutritionInfo, AnalyzedFoodItem, MealType } from '../types';
-import { getChat, speakText, analyzeFoodFromText } from '../services/geminiService';
-import { playAudio, initialNutrition } from '../services/utils';
+import { getChat, speakText, analyzeFoodFromText, calculatePersonalizedGoals } from '../services/geminiService';
+import { playAudio, calculateTotalNutrition } from '../services/utils';
 import Icon from './common/Icon';
 import Loader from './common/Loader';
 import { useData } from '../hooks/useData';
 import { useUI } from '../hooks/useUI';
-
-const calculateTotalNutrition = (items: AnalyzedFoodItem[]): NutritionInfo => {
-    return items.reduce((acc, item) => {
-        for (const key in initialNutrition) {
-            const nutrientKey = key as keyof NutritionInfo;
-            if (typeof item[nutrientKey] === 'number') {
-                acc[nutrientKey] = (acc[nutrientKey] ?? 0) + (item[nutrientKey]!);
-            }
-        }
-        return acc;
-    }, { ...initialNutrition });
-};
 
 const updateDailyGoalFunctionDeclaration: FunctionDeclaration = {
   name: 'updateDailyGoal',
@@ -67,18 +55,44 @@ const logMealFunctionDeclaration: FunctionDeclaration = {
   },
 };
 
+const recalculateAllGoalsFunctionDeclaration: FunctionDeclaration = {
+  name: 'recalculateAllGoals',
+  parameters: {
+    type: Type.OBJECT,
+    description: "Recalculates all of the user's daily micro and macro nutritional goals based on their current profile and a newly expressed aspiration (e.g., 'I want to get stronger', 'I want to improve my skin health', 'I want to grow taller'). This should be used when the user states a new health or physical goal.",
+    properties: {},
+  },
+};
+
+
 const NutritionChat: React.FC = () => {
-  const { meals, userProfile, dailyGoal, setUserProfile, setDailyGoal, addMeal } = useData();
+  const { meals, userProfile, dailyGoal, setUserProfile, setDailyGoal, addMeal, chatHistory, setChatHistory } = useData();
   const { setActiveModal, showToast } = useUI();
   const onClose = () => setActiveModal(null);
 
   const [chat, setChat] = useState<Chat | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(chatHistory);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [speakingMessage, setSpeakingMessage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  useEffect(() => {
+    // Sync local state with context.
+    setMessages(chatHistory);
+  }, [chatHistory]);
+
+  useEffect(() => {
+    // Initialize a single AudioContext for the component's lifecycle
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    return () => {
+      audioContextRef.current?.close();
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,7 +101,15 @@ const NutritionChat: React.FC = () => {
   useEffect(scrollToBottom, [messages]);
 
   useEffect(() => {
-    const mealSummary = meals.map(m => `- ${m.name} (${Math.round(m.nutrition.calories)} kcal)`).join('\n');
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentMeals = meals.filter(m => new Date(m.date) >= sevenDaysAgo);
+
+    const mealHistorySummary = recentMeals.map(m => {
+        const date = new Date(m.date);
+        const day = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return `- On ${day} at ${m.time}, for ${m.mealType}: ${m.name} (${Math.round(m.nutrition.calories)} kcal)`;
+    }).join('\n');
     
     const goalSummary = Object.entries(dailyGoal)
         .map(([key, value]) => {
@@ -98,9 +120,10 @@ const NutritionChat: React.FC = () => {
         .filter(Boolean)
         .join('\n');
 
-    const systemInstruction = `You are a friendly and knowledgeable nutrition assistant for the VisionCal app.
-The user has logged the following meals today:
-${mealSummary || "No meals logged yet."}
+    const systemInstruction = `You are a friendly and knowledgeable nutrition assistant for the VisionCal app, with access to the user's food log. Your primary role is to analyze their eating habits (timing, food choices, frequency) and provide personalized recommendations.
+
+Here is the user's meal history for the last 7 days:
+${mealHistorySummary || "No meals logged yet in the past week."}
 
 Current user profile:
 - Age: ${userProfile.age}
@@ -114,19 +137,26 @@ Current user profile:
 Current daily goals:
 ${goalSummary}
 
-Answer user questions, provide helpful recommendations, and use the available tools to update the user's profile and goals when they ask you to. You can also log meals for the user. If they say something like "log a banana and a coffee for breakfast", use the \`logMeal\` tool with the description "a banana and a coffee" and mealType "Breakfast". Be encouraging, concise, and never judgmental. Confirm any changes you make.`;
+When providing nutritional advice, it's critical that you understand the difference between individual healthy ingredients and a prepared dish. For example, while tomatoes are healthy, a hamburger containing them is often high in fat and sodium due to the ground meat, bun, and sauces. Always consider the context of the entire meal, including cooking methods and added ingredients, when assessing healthiness.
 
-    const initialHistory = messages.map(msg => ({
+Based on this data, answer user questions about their diet, identify patterns in their eating habits, and offer specific, actionable advice. For example, you can comment on meal timing, food variety, or consistency. You can also use tools to log new meals or update their profile/goals. If they say something like "log a banana and a coffee for breakfast", use the \`logMeal\` tool with the description "a banana and a coffee" and mealType "Breakfast". If the user expresses a new aspiration like 'I want to grow taller' or 'I want my hair to be healthier', use the \`recalculateAllGoals\` tool to generate a new, comprehensive nutrition plan for them. Be encouraging, concise, and never judgmental. Confirm any changes you make.`;
+
+    const firebaseHistory = messages.map(msg => ({
         role: msg.role,
         parts: [{ text: msg.text }]
     }));
 
+    // Filter out the last message if it's an empty placeholder from the model
+    if (firebaseHistory.length > 0 && firebaseHistory[firebaseHistory.length - 1].role === 'model' && firebaseHistory[firebaseHistory.length - 1].parts[0].text === '') {
+        firebaseHistory.pop();
+    }
+    
     setChat(getChat(
-      initialHistory, 
+      firebaseHistory, 
       systemInstruction, 
-      [{ functionDeclarations: [updateDailyGoalFunctionDeclaration, updateUserProfileFunctionDeclaration, logMealFunctionDeclaration] }]
+      [{ functionDeclarations: [updateDailyGoalFunctionDeclaration, updateUserProfileFunctionDeclaration, logMealFunctionDeclaration, recalculateAllGoalsFunctionDeclaration] }]
     ));
-  }, [meals, userProfile, dailyGoal, messages]);
+  }, [meals, userProfile, dailyGoal, chatHistory]);
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -134,8 +164,9 @@ Answer user questions, provide helpful recommendations, and use the available to
     if (!userInput.trim() || !chat || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', text: userInput };
-    setMessages(prev => [...prev, userMessage]);
     const currentInput = userInput;
+    const newMessagesWithUser = [...messages, userMessage];
+    setMessages(newMessagesWithUser);
     setUserInput('');
     setIsLoading(true);
 
@@ -196,7 +227,17 @@ Answer user questions, provide helpful recommendations, and use the available to
                 } else {
                     toolResult = { status: 'error', message: 'No description provided for logging.' };
                 }
+            } else if (fc.name === 'recalculateAllGoals') {
+                try {
+                    const newGoals = await calculatePersonalizedGoals(userProfile);
+                    setDailyGoal(newGoals);
+                    showToast("Your daily goals have been recalculated!");
+                    toolResult = { status: 'success', message: 'All daily goals have been recalculated based on your new aspiration.' };
+                } catch (error) {
+                    toolResult = { status: 'error', message: "An error occurred while recalculating goals." };
+                }
             }
+
 
             response = await chat.sendMessageStream({
                 message: [{ functionResponse: { name: fc.name, response: { result: JSON.stringify(toolResult) } } }],
@@ -228,15 +269,17 @@ Answer user questions, provide helpful recommendations, and use the available to
       setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error. Please try again.' }]);
     } finally {
       setIsLoading(false);
+      // Using ref to get the most up-to-date messages state
+      setChatHistory(messagesRef.current);
     }
   };
 
   const handleSpeak = async (text: string) => {
-    if (speakingMessage) return;
+    if (speakingMessage || !audioContextRef.current) return;
     setSpeakingMessage(text);
     try {
       const audioB64 = await speakText(text);
-      await playAudio(audioB64);
+      await playAudio(audioB64, audioContextRef.current);
     } catch (error) {
       console.error(error);
     } finally {
@@ -257,7 +300,7 @@ Answer user questions, provide helpful recommendations, and use the available to
         <div className="flex-1 p-4 overflow-y-auto space-y-4">
           {messages.map((msg, index) => (
             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${msg.role === 'user' ? 'bg-teal-500 text-white rounded-br-none' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-2 whitespace-pre-wrap ${msg.role === 'user' ? 'bg-teal-500 text-white rounded-br-none' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
                 {msg.text}
                 {msg.role === 'model' && msg.text && (
                   <button onClick={() => handleSpeak(msg.text)} className="ml-2 inline-block align-middle text-gray-400 hover:text-teal-500 disabled:opacity-50" disabled={!!speakingMessage}>

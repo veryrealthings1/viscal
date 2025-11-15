@@ -1,8 +1,9 @@
 import React, { createContext, useState, useEffect } from 'react';
-import type { Achievement, Meal, Recipe } from '../types';
+// FIX: Import DailySummary from types.ts
+import type { Achievement, Meal, Recipe, DailySummary } from '../types';
 import { useData } from '../hooks/useData';
 
-type ModalType = 'log' | 'chat' | 'achievements' | 'profile' | 'checker' | 'diary' | 'insights' | 'trends' | 'onboarding' | 'tour' | 'recipe' | 'editMeal' | 'logExercise' | 'liveCoach' | 'recipeBox' | null;
+type ModalType = 'log' | 'chat' | 'achievements' | 'profile' | 'checker' | 'diary' | 'insights' | 'trends' | 'onboarding' | 'tour' | 'recipe' | 'editMeal' | 'logExercise' | 'liveCoach' | 'recipeBox' | 'updateMealPhoto' | 'shareSummary' | null;
 
 interface UIContextType {
   activeModal: ModalType;
@@ -26,48 +27,50 @@ interface UIContextType {
 
   mealToEdit: Meal | null;
   setMealToEdit: React.Dispatch<React.SetStateAction<Meal | null>>;
+  
+  mealToUpdateWithPhoto: Meal | null;
+  setMealToUpdateWithPhoto: React.Dispatch<React.SetStateAction<Meal | null>>;
+
+  summaryToShare: DailySummary | null;
+  setSummaryToShare: React.Dispatch<React.SetStateAction<DailySummary | null>>;
 }
 
 export const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const dataContext = useData(); // Use the hook at the top level
+  const dataContext = useData();
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [newlyUnlocked, setNewlyUnlocked] = useState<Achievement | null>(null);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
-  const [theme, rawSetTheme] = useState<'light' | 'dark' | 'system'>(() => {
-      return (localStorage.getItem('visioncal-theme') as 'light' | 'dark' | 'system') || 'system';
-  });
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [mealToEdit, setMealToEdit] = useState<Meal | null>(null);
+  const [mealToUpdateWithPhoto, setMealToUpdateWithPhoto] = useState<Meal | null>(null);
+  const [summaryToShare, setSummaryToShare] = useState<DailySummary | null>(null);
+
   
   const showToast = (message: string) => {
     setToastMessage(message);
   };
   
-  const setTheme = (newTheme: 'light' | 'dark' | 'system') => {
-      rawSetTheme(newTheme);
-      localStorage.setItem('visioncal-theme', newTheme);
-  }
-
   // Effect to manage onboarding flow
   useEffect(() => {
     if (dataContext?.dataLoaded) {
-      const profileComplete = localStorage.getItem('visioncal-profileComplete') === 'true';
-      const tourComplete = localStorage.getItem('visioncal-tourComplete') === 'true';
-      
-      if (!profileComplete) {
+      // Avoid showing onboarding if another modal is already open
+      if (activeModal) return;
+      if (!dataContext.profileComplete) {
         setActiveModal('onboarding');
-      } else if (!tourComplete) {
+      } else if (!dataContext.tourComplete) {
         setActiveModal('tour');
       }
     }
-  }, [dataContext?.dataLoaded]);
+  }, [dataContext?.dataLoaded, dataContext?.profileComplete, dataContext?.tourComplete, activeModal]);
+
 
   // Effect to apply theme to document
   useEffect(() => {
+    const theme = dataContext?.theme ?? 'system';
     const root = window.document.documentElement;
     const isDark =
       theme === 'dark' ||
@@ -80,7 +83,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     };
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, [dataContext?.theme]);
   
   const value = {
     activeModal,
@@ -92,12 +95,16 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setNewlyUnlocked,
     streakMilestone,
     setStreakMilestone,
-    theme,
-    setTheme,
+    theme: dataContext?.theme ?? 'system',
+    setTheme: dataContext?.setTheme ?? (() => {}),
     recipe,
     setRecipe,
     mealToEdit,
     setMealToEdit,
+    mealToUpdateWithPhoto,
+    setMealToUpdateWithPhoto,
+    summaryToShare,
+    setSummaryToShare,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

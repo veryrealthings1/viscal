@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { NutritionInfo, AnalyzedFoodItem, UserProfile } from '../types';
+import type { NutritionInfo, AnalyzedFoodItem, UserProfile, AnalyzedProduct } from '../types';
 import { analyzeProductImage } from '../services/geminiService';
 import { fileToBase64, limitNutrients } from '../services/utils';
 import Card from './common/Card';
@@ -15,7 +15,7 @@ const FoodChecker: React.FC = () => {
   const onClose = () => setActiveModal(null);
   
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [analysis, setAnalysis] = useState<AnalyzedProduct | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +56,7 @@ const FoodChecker: React.FC = () => {
         ['Calories', 'Protein', 'Carbs', 'Fat', 'Sodium', 'Sugar'].includes(n.name)
     );
     const scoreColor = analysis.score > 75 ? 'text-emerald-500' : analysis.score > 50 ? 'text-amber-500' : 'text-red-500';
+    const userGenderWarning = analysis.genderWarnings?.find(w => w.gender === userProfile.gender);
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -86,6 +87,34 @@ const FoodChecker: React.FC = () => {
             <h4 className="font-semibold text-gray-900 dark:text-white">AI Verdict</h4>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{analysis.verdict}</p>
          </div>
+
+        {analysis.antiNutrients && analysis.antiNutrients.length > 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl">
+                <div className="flex items-start gap-3">
+                    <Icon path="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" className="w-6 h-6 flex-shrink-0 text-amber-500 mt-1" />
+                    <div>
+                        <h4 className="font-semibold text-amber-900 dark:text-amber-100">Contains Anti-Nutrients</h4>
+                        <ul className="mt-1 space-y-1 text-sm text-amber-800 dark:text-amber-200">
+                            {analysis.antiNutrients.map((an) => (
+                                <li key={an.name}><strong>{an.name}:</strong> {an.description}</li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {userGenderWarning && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-2xl">
+                <div className="flex items-start gap-3">
+                    <Icon path="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" className="w-6 h-6 flex-shrink-0 text-amber-500 mt-1" />
+                    <div>
+                        <h4 className="font-semibold text-amber-900 dark:text-amber-100">For Your Consideration</h4>
+                        <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">{userGenderWarning.warning}</p>
+                    </div>
+                </div>
+            </div>
+        )}
         
         <div>
             <h4 className="font-semibold text-lg mb-3">Impact on Your Day</h4>

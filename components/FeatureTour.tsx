@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Card from './common/Card';
 import Icon from './common/Icon';
+import Logo from './common/Logo';
 
 interface FeatureTourProps {
   onComplete: () => void;
@@ -8,24 +9,34 @@ interface FeatureTourProps {
 
 const onboardingSteps = [
   {
-    icon: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z',
+    icon: 'logo',
     title: 'Welcome to VisionCal!',
-    description: 'Your personal AI-powered nutrition tracker. Let\'s take a quick tour of the key features to get you started on your health journey.',
+    description: "Your personal AI-powered nutrition tracker. Let's take a quick tour of the key features to get you started on your health journey.",
+  },
+  {
+    icon: 'M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z',
+    title: 'Dashboard At a Glance',
+    description: 'Your main screen shows your daily progress. Track your calories, protein, carbs, and fat with the large progress rings. Aim to stay within your goals!',
   },
   {
     icon: 'M12 4.5v15m7.5-7.5h-15',
-    title: 'Log Meals Effortlessly',
-    description: 'Tap the large "+" button to add a meal. You can snap a photo, speak a description, or scan a barcode. Our AI will handle the rest.',
+    title: 'Effortless Logging',
+    description: 'Tap the large "+" button to add a meal. You can snap a photo, speak a description, type it manually, or scan a barcode. Our AI will handle the rest.',
   },
   {
     icon: 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    title: 'Chat with Your AI Nutritionist',
-    description: 'Have questions? Tap the chat icon to talk to your AI assistant. Ask for advice, get meal ideas, or even update your goals conversationally.',
+    title: 'Your AI Team',
+    description: 'Have questions? Tap the chat icon to talk to your AI Nutritionist, or use the Live Coach for a real-time voice conversation to get advice or log food on the go.',
+  },
+  {
+    icon: 'M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.517l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
+    title: 'Track Your Progress',
+    description: 'Use the "Diary" and "Trends" tabs at the bottom to review your meal history, see your calorie intake over time, and monitor your consistency.',
   },
   {
     icon: 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z',
-    title: 'You\'re All Set!',
-    description: 'You\'re ready to start tracking. Remember, consistency is key. We\'re here to help you every step of the way. Happy tracking!',
+    title: "You're All Set!",
+    description: "You're ready to start tracking. Remember, consistency is key. We're here to help you every step of the way. Happy tracking!",
   },
 ];
 
@@ -43,7 +54,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({ onComplete }) => {
 
   const handleBack = () => {
     if (step > 0) {
-      setStep(step - 1);
+      setStep(step + 1);
     }
   };
 
@@ -51,7 +62,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({ onComplete }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto relative text-center flex flex-col items-center p-8">
         <div className="bg-teal-100 dark:bg-teal-900 text-teal-500 rounded-full p-4 mb-6">
-          <Icon path={currentStep.icon} className="w-12 h-12" />
+          {currentStep.icon === 'logo' ? <Logo className="w-12 h-12" /> : <Icon path={currentStep.icon} className="w-12 h-12" />}
         </div>
         
         <h2 className="text-2xl font-bold mb-3">{currentStep.title}</h2>

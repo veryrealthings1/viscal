@@ -1,46 +1,106 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInAnonymously, type Auth, type User } from 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+import 'firebase/compat/analytics';
+import 'firebase/compat/performance';
+
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signInAnonymously, 
+  type Auth, 
+  type User,
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import { getAnalytics, logEvent, setUserId as setAnalyticsUserId } from 'firebase/analytics';
+import { getPerformance } from 'firebase/performance';
 import { getFirebaseConfig } from '../firebaseConfig';
-import type { UserProfile, Meal, NutritionInfo, Exercise } from '../types';
+import type { UserProfile, Meal, NutritionInfo, Exercise, WaterLog, Recipe, ChatMessage } from '../types';
 
 // --- Initialize Firebase ---
-// Eager initialization is simpler and more robust for this app's structure.
 const firebaseConfig = getFirebaseConfig();
-let app: FirebaseApp | undefined;
+let app: firebase.app.App;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let googleProvider: GoogleAuthProvider | undefined;
+let analytics: any; // Use 'any' to avoid build issues if Analytics isn't fully configured
+let performance: any; // Use 'any' for Performance Monitoring
 
 try {
-    app = initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+      app = firebase.initializeApp(firebaseConfig);
+    } else {
+      app = firebase.app();
+    }
+    
     auth = getAuth(app);
     db = getFirestore(app);
+    if (typeof window !== 'undefined') {
+        analytics = getAnalytics(app);
+        performance = getPerformance(app);
+    }
+    googleProvider = new GoogleAuthProvider();
 } catch (error) {
     console.error("Firebase initialization failed:", error);
-    // If initialization fails, auth and db will be undefined, and functions will gracefully handle it.
 }
+
+// --- Event Tracking ---
+export const trackEvent = (eventName: string, params?: { [key: string]: any }) => {
+  if (!analytics) {
+    console.warn("Firebase Analytics is not available. Event not tracked:", eventName, params);
+    return;
+  }
+  logEvent(analytics, eventName, params);
+};
 
 // --- Authentication ---
 export const onAuthChange = (callback: (user: User | null) => void) => {
   if (!auth) {
     console.error("Firebase Auth is not available.");
-    // Immediately call back with null to signal no user.
-    callback(null);
-    return () => {}; // Return an empty unsubscribe function
+    return () => {};
   }
-
-  return onAuthStateChanged(auth, (user) => {
-    if (user) {
-      callback(user);
-    } else {
-      // If no user, sign in anonymously
-      signInAnonymously(auth).catch((error) => {
-        console.error("Anonymous sign-in failed:", error);
-        callback(null); // Signal sign-in failure
-      });
+  return onAuthStateChanged(auth, user => {
+    if (user && analytics) {
+      setAnalyticsUserId(analytics, user.uid);
     }
+    callback(user);
   });
 };
+
+export const signInWithGoogle = async (): Promise<User> => {
+    if (!auth || !googleProvider) throw new Error("Firebase Auth not initialized.");
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+};
+
+export const signInWithEmail = async (email: string, password: string): Promise<User> => {
+    if (!auth) throw new Error("Firebase Auth not initialized.");
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    return result.user;
+};
+
+export const createUser = async (email: string, password: string): Promise<User> => {
+    if (!auth) throw new Error("Firebase Auth not initialized.");
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    return result.user;
+};
+
+export const signInAnonymouslyUser = async (): Promise<User> => {
+    if (!auth) throw new Error("Firebase Auth not initialized.");
+    const userCredential = await signInAnonymously(auth);
+    return userCredential.user;
+};
+
+export const signOutUser = async (): Promise<void> => {
+    if (!auth) throw new Error("Firebase Auth not initialized.");
+    await signOut(auth);
+};
+
 
 // --- Firestore Service ---
 
@@ -77,10 +137,13 @@ export const getUserData = async (userId: string) => {
     const data = await getDocument<{
         meals: Meal[];
         exercises: Exercise[];
+        waterLogs: WaterLog[];
+        savedRecipes: Recipe[];
         userProfile: UserProfile;
         dailyGoal: NutritionInfo;
         unlockedAchievements: string[];
-        theme: 'light' | 'dark' | 'system'
+        theme: 'light' | 'dark' | 'system';
+        chatHistory?: ChatMessage[];
     }>('users', userId);
     return data;
 }
@@ -92,6 +155,14 @@ export const saveMeals = async (userId: string, meals: Meal[]) => {
 export const saveExercises = async (userId: string, exercises: Exercise[]) => {
     await setDocument('users', userId, { exercises });
 }
+
+export const saveWaterLogs = async (userId: string, waterLogs: WaterLog[]) => {
+    await setDocument('users', userId, { waterLogs });
+};
+
+export const saveSavedRecipes = async (userId: string, recipes: Recipe[]) => {
+    await setDocument('users', userId, { savedRecipes: recipes });
+};
 
 export const saveUserProfile = async (userId: string, profile: UserProfile) => {
     await setDocument('users', userId, { userProfile: profile });
@@ -107,6 +178,10 @@ export const saveUnlockedAchievements = async (userId: string, achievements: str
 
 export const saveTheme = async (userId: string, theme: 'light' | 'dark' | 'system') => {
     await setDocument('users', userId, { theme });
+}
+
+export const saveChatHistory = async (userId: string, history: ChatMessage[]) => {
+    await setDocument('users', userId, { chatHistory: history });
 }
 
 export const saveOnboardingStatus = async (userId: string, status: { profileComplete?: boolean, tourComplete?: boolean }) => {

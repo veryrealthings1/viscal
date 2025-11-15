@@ -63,7 +63,7 @@ const Achievements: React.FC<AchievementsProps> = ({ unlockedIds, onClose }) => 
             <div key={category}>
                 <h3 className="font-semibold text-lg text-teal-600 dark:text-teal-400 mb-2 px-2">{category}</h3>
                 <div className="space-y-3">
-                    {/* FIX: Cast `achievements` to `Achievement[]` to resolve sort method error. */}
+                    {/* FIX: Cast `achievements` to `Achievement[]` to resolve type inference issue with `Object.entries`. */}
                     {(achievements as Achievement[]).sort((a,b) => (unlockedIds.has(a.id) ? -1 : 1) - (unlockedIds.has(b.id) ? -1 : 1)).map(ach => (
                         <AchievementItem key={ach.id} achievement={ach} isUnlocked={unlockedIds.has(ach.id)} />
                     ))}
