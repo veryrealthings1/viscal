@@ -1,11 +1,7 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, GoalSuggestion, MealSuggestion, WeeklyInsight, Meal, Recipe, Exercise, DailyInsight, AntiNutrient } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable is not set");
-}
-
-export const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const antiNutrientSchema = {
   type: Type.OBJECT,
@@ -107,7 +103,7 @@ export const analyzeFoodFromText = async (text: string): Promise<AnalyzedFoodIte
   }
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-lite-latest',
       contents: {
         parts: [
           {
@@ -436,7 +432,7 @@ For each macronutrient (protein, carbs, fat), provide the suggested daily intake
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-lite-latest',
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
@@ -498,7 +494,7 @@ For each meal, provide a name, the type of meal (Breakfast, Lunch, Dinner, or Sn
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-lite-latest',
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
@@ -698,7 +694,7 @@ Based on this information, extract the activity's name, its duration in minutes,
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-lite-latest',
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
@@ -753,7 +749,7 @@ Your task is to generate a single, concise insight. This could be praise for hit
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-flash-lite-latest',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json",
@@ -774,25 +770,22 @@ export const generateImageForMeal = async (mealName: string): Promise<string> =>
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: {
-                parts: [
-                    {
-                        text: `A vibrant, abstract, and appetizing artistic illustration representing "${mealName}". Style: minimalist, modern, using geometric shapes and a pleasing color palette. Not a realistic photo.`,
-                    },
-                ],
+                parts: [{
+                    text: `A beautiful, artistic food illustration of "${mealName}". Stylized, modern, appetizing, not a photo. Aspect ratio 16:9.`
+                }],
             },
             config: {
                 responseModalities: [Modality.IMAGE],
             },
         });
-        const parts = response.candidates?.[0]?.content?.parts;
-        if (parts) {
-            for (const part of parts) {
-                if (part.inlineData?.data) {
-                    const base64ImageBytes: string = part.inlineData.data;
-                    return `data:image/png;base64,${base64ImageBytes}`;
-                }
+
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const base64ImageBytes: string = part.inlineData.data;
+                return `data:image/png;base64,${base64ImageBytes}`;
             }
         }
+        
         throw new Error("No image data received from API.");
     } catch (error) {
         console.error("Error generating image for meal suggestion:", error);

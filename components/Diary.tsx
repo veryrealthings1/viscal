@@ -8,7 +8,7 @@ import MacroBar from './common/MacroBar';
 
 const MealItem: React.FC<{ meal: Meal }> = React.memo(({ meal }) => {
   const { deleteMeal } = useData();
-  const { setMealToEdit, setActiveModal, setMealToUpdateWithPhoto } = useUI();
+  const { setMealToEdit, setActiveModal, setMealToUpdateWithPhoto, setMealToShare } = useUI();
   const { name, nutrition, imageUrlBefore, time, source } = meal;
   
   const sourceIcons: Record<Meal['source'], string> = {
@@ -36,6 +36,12 @@ const MealItem: React.FC<{ meal: Meal }> = React.memo(({ meal }) => {
       deleteMeal(meal.id);
     }
   };
+  
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMealToShare(meal);
+    setActiveModal('shareMeal');
+  };
 
   const canUpdateWithPhoto = meal.source === 'photo' && meal.imageUrlBefore && !meal.imageUrlAfter;
 
@@ -54,12 +60,15 @@ const MealItem: React.FC<{ meal: Meal }> = React.memo(({ meal }) => {
               <Icon path={sourceIcons[source]} className="w-5 h-5 text-gray-400 mt-1 ml-auto" />
           </div>
       </div>
+       <button onClick={handleShare} title="Share this meal" className="p-4 bg-teal-500 text-white opacity-0 group-hover/meal:opacity-100 transition-opacity h-full flex items-center">
+         <Icon path="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.195.04.39.068.588.068h3.91a2.25 2.25 0 002.04-1.284 2.25 2.25 0 00-2.04-3.216h-3.91a2.25 2.25 0 00-2.04 1.284 2.25 2.25 0 002.04 3.216zM13.873 17.562a2.25 2.25 0 100-2.186m0 2.186c-.195-.04-.39-.068-.588-.068h-3.91a2.25 2.25 0 00-2.04 1.284 2.25 2.25 0 002.04 3.216h3.91a2.25 2.25 0 002.04-1.284 2.25 2.25 0 00-2.04-3.216z" className="w-6 h-6"/>
+       </button>
        {canUpdateWithPhoto && (
         <button onClick={handleUpdateWithPhoto} title="Update with leftovers photo" className="p-4 bg-sky-500 text-white opacity-0 group-hover/meal:opacity-100 transition-opacity h-full flex items-center">
             <Icon path="M6.828 6.828a4.5 4.5 0 016.364 0l6.364 6.364a4.5 4.5 0 01-6.364 6.364L6.828 13.172a4.5 4.5 0 010-6.364z" className="w-6 h-6"/>
         </button>
        )}
-      <button onClick={handleDelete} className="p-4 bg-red-500 text-white translate-x-full group-hover/meal:translate-x-0 transition-transform h-full flex items-center">
+      <button onClick={handleDelete} className="p-4 bg-red-500 text-white opacity-0 group-hover/meal:opacity-100 transition-opacity h-full flex items-center">
         <Icon path="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" className="w-6 h-6"/>
       </button>
     </Card>

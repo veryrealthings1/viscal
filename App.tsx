@@ -29,9 +29,25 @@ const LiveCoachModal = React.lazy(() => import('./components/LiveCoachModal'));
 const RecipeBoxModal = React.lazy(() => import('./components/RecipeBoxModal'));
 const UpdateMealWithPhoto = React.lazy(() => import('./components/UpdateMealWithPhoto'));
 const ShareSummaryModal = React.lazy(() => import('./components/ShareSummaryModal'));
+const ShareMealModal = React.lazy(() => import('./components/ShareMealModal'));
 
 
 const App: React.FC = () => {
+  // Gracefully handle missing API key on deployment
+  if (!process.env.API_KEY) {
+    return (
+      <main className="h-screen w-screen bg-red-50 dark:bg-red-900/50 flex flex-col items-center justify-center text-center p-4">
+        <div className="max-w-md">
+          <Icon path="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-red-800 dark:text-red-200">Configuration Error</h1>
+          <p className="mt-2 text-red-700 dark:text-red-300">
+            The application is missing a required configuration (API_KEY). Please ensure the environment variables are set up correctly by the application administrator. The app cannot function without it.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const {
     activeModal,
     setActiveModal,
@@ -45,6 +61,7 @@ const App: React.FC = () => {
     mealToEdit,
     mealToUpdateWithPhoto,
     summaryToShare,
+    mealToShare,
   } = useUI();
   
   const {
@@ -112,6 +129,7 @@ const App: React.FC = () => {
       case 'liveCoach': return <LiveCoachModal />;
       case 'recipeBox': return <RecipeBoxModal />;
       case 'shareSummary': return summaryToShare ? <ShareSummaryModal summary={summaryToShare} /> : null;
+      case 'shareMeal': return mealToShare ? <ShareMealModal /> : null;
       default: return null;
     }
   };

@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect } from 'react';
 import type { Achievement, Meal, Recipe, DailySummary } from '../types';
 import { useData } from '../hooks/useData';
 
-type ModalType = 'log' | 'chat' | 'achievements' | 'profile' | 'checker' | 'diary' | 'insights' | 'trends' | 'onboarding' | 'tour' | 'recipe' | 'editMeal' | 'logExercise' | 'liveCoach' | 'recipeBox' | 'updateMealPhoto' | 'shareSummary' | null;
+type ModalType = 'log' | 'chat' | 'achievements' | 'profile' | 'checker' | 'diary' | 'insights' | 'trends' | 'onboarding' | 'tour' | 'recipe' | 'editMeal' | 'logExercise' | 'liveCoach' | 'recipeBox' | 'updateMealPhoto' | 'shareSummary' | 'shareMeal' | null;
 
 interface UIContextType {
   activeModal: ModalType;
@@ -33,6 +33,9 @@ interface UIContextType {
 
   summaryToShare: DailySummary | null;
   setSummaryToShare: React.Dispatch<React.SetStateAction<DailySummary | null>>;
+
+  mealToShare: Meal | null;
+  setMealToShare: React.Dispatch<React.SetStateAction<Meal | null>>;
 }
 
 export const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -48,6 +51,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [mealToEdit, setMealToEdit] = useState<Meal | null>(null);
   const [mealToUpdateWithPhoto, setMealToUpdateWithPhoto] = useState<Meal | null>(null);
   const [summaryToShare, setSummaryToShare] = useState<DailySummary | null>(null);
+  const [mealToShare, setMealToShare] = useState<Meal | null>(null);
 
   
   const showToast = (message: string) => {
@@ -105,6 +109,8 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setMealToUpdateWithPhoto,
     summaryToShare,
     setSummaryToShare,
+    mealToShare,
+    setMealToShare,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

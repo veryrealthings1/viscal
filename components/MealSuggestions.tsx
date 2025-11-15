@@ -55,24 +55,25 @@ const MealSuggestions: React.FC = () => {
             }
 
             try {
-                // FIX: Using Array.from to ensure correct type inference from Set, resolving an issue where spread syntax was inferred as unknown[].
                 const pastMealNames: string[] = Array.from(new Set(meals.slice(-20).map(m => m.name)));
-                const result = await getMealSuggestions(remainingNutrients, pastMealNames, userProfile);
+                const baseSuggestions = await getMealSuggestions(remainingNutrients, pastMealNames, userProfile);
                 
-                // Generate images in parallel
-                const suggestionsWithImagesPromises = result.map(async (suggestion) => {
-                    try {
-                        const imageUrl = await generateImageForMeal(suggestion.name);
-                        return { ...suggestion, imageUrl };
-                    } catch (e) {
-                        console.error(`Failed to generate image for ${suggestion.name}`, e);
-                        return { ...suggestion, imageUrl: undefined }; // Fallback
-                    }
-                });
-                
-                const suggestionsWithImages = await Promise.all(suggestionsWithImagesPromises);
-                setSuggestions(suggestionsWithImages);
+                // Set text-only suggestions first for a faster UI response
+                setSuggestions(baseSuggestions);
 
+                // Then, generate images sequentially to avoid rate limiting
+                const suggestionsWithImages: MealSuggestionWithImage[] = [...baseSuggestions];
+                for (let i = 0; i < baseSuggestions.length; i++) {
+                    try {
+                        const imageUrl = await generateImageForMeal(baseSuggestions[i].name);
+                        suggestionsWithImages[i] = { ...suggestionsWithImages[i], imageUrl };
+                        // Update the state progressively so images appear as they load
+                        setSuggestions([...suggestionsWithImages]);
+                    } catch (e) {
+                        console.error(`Failed to generate image for ${baseSuggestions[i].name}`, e);
+                        // The suggestion will just lack an image, which is a graceful fallback.
+                    }
+                }
             } catch (e: any) {
                 setError(e.message || "Could not fetch suggestions.");
             } finally {
