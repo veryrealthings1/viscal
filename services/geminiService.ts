@@ -3,7 +3,7 @@ import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, Goa
 
 // Prevent crash if process.env is undefined during module load. 
 // App.tsx checks for the actual key and blocks usage if missing.
-const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "MISSING_KEY_PLACEHOLDER";
+const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "";
 
 export const ai = new GoogleGenAI({ apiKey });
 
