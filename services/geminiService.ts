@@ -1,7 +1,11 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, GoalSuggestion, MealSuggestion, WeeklyInsight, Meal, Recipe, Exercise, DailyInsight, AntiNutrient } from '../types';
 
-export const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Prevent crash if process.env is undefined during module load. 
+// App.tsx checks for the actual key and blocks usage if missing.
+const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "MISSING_KEY_PLACEHOLDER";
+
+export const ai = new GoogleGenAI({ apiKey });
 
 const antiNutrientSchema = {
   type: Type.OBJECT,
@@ -255,7 +259,7 @@ const analyzedProductSchema = {
     genderWarnings: {
       type: Type.ARRAY,
       items: genderWarningSchema,
-      description: 'A list of any gender-specific warnings related to the product (e.g., high phytoestrogens for males).',
+      description: 'A list of any gender-specific warnings related to the product (e.g., high phytoestrogens like soy for males concerned about testosterone).',
     }
   },
   required: ['name', 'score', 'verdict', 'highlights', 'nutrients'],

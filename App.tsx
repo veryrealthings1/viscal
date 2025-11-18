@@ -34,9 +34,9 @@ const ShareMealModal = React.lazy(() => import('./components/ShareMealModal'));
 
 
 const App: React.FC = () => {
-  // Gracefully handle missing API key. 
+  // Gracefully handle missing API key with safe chaining for process.env
   // Supabase keys are handled in the service layer with fallbacks.
-  if (!process.env.API_KEY) {
+  if (!process?.env?.API_KEY) {
     return (
       <main className="h-screen w-screen bg-red-50 dark:bg-red-900/50 flex flex-col items-center justify-center text-center p-4">
         <div className="max-w-md">
