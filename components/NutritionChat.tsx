@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Chat } from "@google/genai";
 import { FunctionDeclaration, Type } from "@google/genai";
@@ -66,7 +67,7 @@ const recalculateAllGoalsFunctionDeclaration: FunctionDeclaration = {
 
 
 const NutritionChat: React.FC = () => {
-  const { meals, userProfile, dailyGoal, setUserProfile, setDailyGoal, addMeal, chatHistory, setChatHistory } = useData();
+  const { meals, userProfile, dailyGoal, setUserProfile, setDailyGoal, addMeal, chatHistory, setChatHistory, waterLogs, exercises, currentStreak, unlockedAchievements, todaysNutrition, todaysWaterIntake, todaysCaloriesBurned } = useData();
   const { setActiveModal, showToast } = useUI();
   const onClose = () => setActiveModal(null);
 
@@ -111,6 +112,12 @@ const NutritionChat: React.FC = () => {
         return `- On ${day} at ${m.time}, for ${m.mealType}: ${m.name} (${Math.round(m.nutrition.calories)} kcal)`;
     }).join('\n');
     
+    const waterSummary = `Avg daily water (last 7 days): ${Math.round(waterLogs.filter(w => new Date(w.date) >= sevenDaysAgo).reduce((acc, log) => acc + log.amount, 0) / 7 || 0)} ml`;
+    const exerciseSummary = exercises
+      .filter(e => new Date(e.date) >= sevenDaysAgo)
+      .map(e => `- ${new Date(e.date).toLocaleDateString('en-US', {weekday: 'short'})}: ${e.name} (${e.durationMinutes} min, ${Math.round(e.caloriesBurned)} kcal)`)
+      .join('\n');
+    
     const goalSummary = Object.entries(dailyGoal)
         .map(([key, value]) => {
             if (value === null || value === undefined) return null;
@@ -120,26 +127,45 @@ const NutritionChat: React.FC = () => {
         .filter(Boolean)
         .join('\n');
 
-    const systemInstruction = `You are a friendly and knowledgeable nutrition assistant for the VisionCal app, with access to the user's food log. Your primary role is to analyze their eating habits (timing, food choices, frequency) and provide personalized recommendations.
+    const systemInstruction = `You are a friendly, personalized, and knowledgeable nutrition assistant for the VisionCal app. You have FULL access to the user's data and history. DO NOT ask the user for their basic details (age, weight, goals) as you already know them.
 
-Here is the user's meal history for the last 7 days:
-${mealHistorySummary || "No meals logged yet in the past week."}
-
-Current user profile:
+USER PROFILE (REMEMBER THIS):
 - Age: ${userProfile.age}
 - Weight: ${userProfile.weight} kg
 - Height: ${userProfile.height} cm
 - Gender: ${userProfile.gender}
 - Activity Level: ${userProfile.activityLevel}
-- Aspiration: ${userProfile.aspirations}
+- Primary Goal: ${userProfile.aspirations}
 - Dietary Preference: ${userProfile.dietaryPreference}
+- Target Weight: ${userProfile.targetWeight ? userProfile.targetWeight + ' kg' : 'Not set'}
 
-Current daily goals:
+TODAY'S PROGRESS:
+- Calories: ${Math.round(todaysNutrition.calories)} / ${dailyGoal.calories} kcal
+- Protein: ${Math.round(todaysNutrition.protein)} / ${dailyGoal.protein} g
+- Water: ${Math.round(todaysWaterIntake)} / ${dailyGoal.waterGoal} ml
+- Exercises Calories Burned: ~${Math.round(todaysCaloriesBurned)} kcal
+- Current Streak: ${currentStreak} days
+- Achievements Unlocked: ${unlockedAchievements.size}
+
+HISTORY (LAST 7 DAYS):
+Meals:
+${mealHistorySummary || "No meals logged yet."}
+
+Hydration:
+${waterSummary}
+
+Exercises:
+${exerciseSummary || "No exercises logged yet."}
+
+DAILY GOALS:
 ${goalSummary}
 
-When providing nutritional advice, it's critical that you understand the difference between individual healthy ingredients and a prepared dish. For example, while tomatoes are healthy, a hamburger containing them is often high in fat and sodium due to the ground meat, bun, and sauces. Always consider the context of the entire meal, including cooking methods and added ingredients, when assessing healthiness.
-
-Based on this data, answer user questions about their diet, identify patterns in their eating habits, and offer specific, actionable advice. For example, you can comment on meal timing, food variety, or consistency. You can also use tools to log new meals or update their profile/goals. If they say something like "log a banana and a coffee for breakfast", use the \`logMeal\` tool with the description "a banana and a coffee" and mealType "Breakfast". If the user expresses a new aspiration like 'I want to grow taller' or 'I want my hair to be healthier', use the \`recalculateAllGoals\` tool to generate a new, comprehensive nutrition plan for them. Be encouraging, concise, and never judgmental. Confirm any changes you make.`;
+Your role is to act as a continuity of the user's journey.
+- If the user asks "How am I doing?", analyze their TODAY'S PROGRESS and recent history.
+- If the user wants to log food, use the 'logMeal' tool.
+- If the user changes a goal, use 'updateDailyGoal' or 'recalculateAllGoals'.
+- Be encouraging, concise, and never judgmental.
+- "Remembering everything" means using the provided context to answer questions without needing the user to repeat themselves.`;
 
     const firebaseHistory = messages.map(msg => ({
         role: msg.role,
@@ -156,7 +182,7 @@ Based on this data, answer user questions about their diet, identify patterns in
       systemInstruction, 
       [{ functionDeclarations: [updateDailyGoalFunctionDeclaration, updateUserProfileFunctionDeclaration, logMealFunctionDeclaration, recalculateAllGoalsFunctionDeclaration] }]
     ));
-  }, [meals, userProfile, dailyGoal, chatHistory]);
+  }, [meals, userProfile, dailyGoal, chatHistory, waterLogs, exercises, currentStreak, unlockedAchievements, todaysNutrition, todaysWaterIntake, todaysCaloriesBurned]);
 
 
   const handleSendMessage = async (e: React.FormEvent) => {

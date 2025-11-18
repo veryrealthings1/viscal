@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { AnalyzedFoodItem, Meal, MealType, Recipe } from '../types';
 import { ai, analyzeFoodImage, analyzeFoodFromText } from '../services/geminiService';
-import { fileToBase64, encode, calculateTotalNutrition } from '../services/utils';
+import { compressImage, encode, calculateTotalNutrition } from '../services/utils';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import Icon from './common/Icon';
@@ -57,6 +57,7 @@ const FoodLogger: React.FC = () => {
 
     // Photo mode state
     const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [compressedImage, setCompressedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // Voice mode state
@@ -80,6 +81,7 @@ const FoodLogger: React.FC = () => {
         setIsLoading(false);
         setError(null);
         setImageUrl(null);
+        setCompressedImage(null);
         if (isRecording) stopRecording();
         setTranscribedText('');
         setManualDescription('');
@@ -110,7 +112,7 @@ const FoodLogger: React.FC = () => {
         const now = new Date();
         addMeal({
             id: now.toISOString(), name: mealName, nutrition: totalNutrition,
-            imageUrlBefore: source === 'photo' ? imageUrl ?? undefined : undefined,
+            imageUrlBefore: source === 'photo' ? compressedImage ?? imageUrl ?? undefined : undefined,
             items: items, date: now.toISOString(),
             time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
             source, mealType: selectedMealType
@@ -120,27 +122,30 @@ const FoodLogger: React.FC = () => {
     };
 
     // --- PHOTO MODE ---
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const dataUri = e.target?.result as string;
-                setImageUrl(dataUri);
-                handleAnalyzePhoto(dataUri);
-            };
-            reader.readAsDataURL(file);
+            try {
+                // Create preview immediately
+                setImageUrl(URL.createObjectURL(file));
+                setIsLoading(true); 
+                setError(null);
+                
+                // Compress image
+                const compressedBase64 = await compressImage(file);
+                setCompressedImage(`data:image/jpeg;base64,${compressedBase64}`);
+                
+                // Analyze
+                const result = await analyzeFoodImage(compressedBase64);
+                setAnalysis(result);
+                setStep('results');
+            } catch (e: any) {
+                setError(e.message);
+                setStep('input');
+            } finally {
+                setIsLoading(false);
+            }
         }
-    };
-    const handleAnalyzePhoto = async (dataUri: string) => {
-        setIsLoading(true); setError(null);
-        try {
-            const base64Image = dataUri.split(',')[1];
-            const result = await analyzeFoodImage(base64Image);
-            setAnalysis(result);
-            setStep('results');
-        } catch (e: any) { setError(e.message); setStep('input'); } 
-        finally { setIsLoading(false); }
     };
     
     // --- MANUAL MODE ---

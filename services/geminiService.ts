@@ -63,8 +63,9 @@ const foodItemSchema = {
 
 export const analyzeFoodImage = async (base64Image: string): Promise<AnalyzedFoodItem[]> => {
   try {
+    // Upgraded to gemini-3-pro-preview for superior visual understanding
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           {
@@ -102,8 +103,9 @@ export const analyzeFoodFromText = async (text: string): Promise<AnalyzedFoodIte
     return [];
   }
   try {
+    // Upgraded to gemini-3-pro-preview for deeper reasoning on complex meal descriptions
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           {
@@ -133,8 +135,9 @@ export const analyzeFoodFromText = async (text: string): Promise<AnalyzedFoodIte
 
 export const analyzeMealConsumption = async (base64ImageBefore: string, base64ImageAfter: string): Promise<AnalyzedFoodItem[]> => {
   try {
+    // Upgraded to gemini-3-pro-preview for better comparison capabilities
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64ImageBefore } },
@@ -287,8 +290,9 @@ Based on the product label or your knowledge of the item, provide a detailed ana
 Finally, consider the user's gender. If the product contains ingredients known to have specific negative effects for the user's gender (e.g., high phytoestrogens like soy for males concerned about testosterone, or items not recommended for females), add a concise, non-alarmist warning to the 'genderWarnings' array. Frame these as potential considerations, not absolute medical advice.`;
 
   try {
+    // Upgraded to gemini-3-pro-preview for deeper label analysis
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
@@ -298,6 +302,8 @@ Finally, consider the user's gender. If the product contains ingredients known t
       config: {
         responseMimeType: "application/json",
         responseSchema: analyzedProductSchema,
+        // Enable thinking for complex health score analysis
+        thinkingConfig: { thinkingBudget: 4096 }, 
       },
     });
 
@@ -373,8 +379,9 @@ If a target weight is provided, tailor the calorie and macronutrient goals to he
 Generate a complete JSON object with appropriate daily targets for all macros, vitamins, and minerals according to the provided schema.`;
 
   try {
+    // Upgraded to gemini-3-pro-preview for expert-level planning
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', 
+      model: 'gemini-3-pro-preview', 
       contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",

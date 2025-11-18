@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { NutritionInfo, AnalyzedFoodItem, UserProfile, AnalyzedProduct } from '../types';
 import { analyzeProductImage } from '../services/geminiService';
-import { fileToBase64, limitNutrients } from '../services/utils';
+import { compressImage, limitNutrients } from '../services/utils';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import Icon from './common/Icon';
@@ -28,7 +28,8 @@ const FoodChecker: React.FC = () => {
       setError(null);
       setIsLoading(true);
       try {
-        const base64Image = await fileToBase64(file);
+        // Resize image before sending to API
+        const base64Image = await compressImage(file);
         const result = await analyzeProductImage(base64Image, userProfile, dailyGoal);
         setAnalysis(result);
       } catch (e: any) {

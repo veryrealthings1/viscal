@@ -10,6 +10,7 @@ import { useData } from './hooks/useData';
 import type { UserProfile, NutritionInfo } from './types';
 import { checkAchievements } from './services/achievements';
 import Card from './components/common/Card';
+import Auth from './components/Auth';
 
 // Lazy load all modal components for performance
 const FoodLogger = React.lazy(() => import('./components/FoodLogger'));
@@ -33,7 +34,8 @@ const ShareMealModal = React.lazy(() => import('./components/ShareMealModal'));
 
 
 const App: React.FC = () => {
-  // Gracefully handle missing API key on deployment
+  // Gracefully handle missing API key. 
+  // Supabase keys are handled in the service layer with fallbacks.
   if (!process.env.API_KEY) {
     return (
       <main className="h-screen w-screen bg-red-50 dark:bg-red-900/50 flex flex-col items-center justify-center text-center p-4">
@@ -41,7 +43,7 @@ const App: React.FC = () => {
           <Icon path="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-red-800 dark:text-red-200">Configuration Error</h1>
           <p className="mt-2 text-red-700 dark:text-red-300">
-            The application is missing a required configuration (API_KEY). Please ensure the environment variables are set up correctly by the application administrator. The app cannot function without it.
+            The application is missing the required <code>API_KEY</code> for Gemini. Please ensure the environment variable is set up correctly.
           </p>
         </div>
       </main>
@@ -65,8 +67,9 @@ const App: React.FC = () => {
   } = useUI();
   
   const {
+    session,
+    user,
     dataLoaded,
-    userId,
     meals,
     dailyGoal,
     unlockedAchievements,
@@ -91,23 +94,23 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!dataLoaded || !userId) return;
+    if (!dataLoaded || !user) return;
     const justUnlocked = checkAchievements(meals, dailyGoal, unlockedAchievements);
     if (justUnlocked.length > 0) {
       const newIds = justUnlocked.map(a => a.id);
       setUnlockedAchievements(prev => new Set([...prev, ...newIds]));
       setNewlyUnlocked(justUnlocked[0]);
     }
-  }, [meals, dailyGoal, unlockedAchievements, setUnlockedAchievements, setNewlyUnlocked, dataLoaded, userId]);
+  }, [meals, dailyGoal, unlockedAchievements, setUnlockedAchievements, setNewlyUnlocked, dataLoaded, user]);
 
   useEffect(() => {
-    if (!dataLoaded || !userId) return;
+    if (!dataLoaded || !user) return;
     const milestones = [3, 7, 14, 30, 50, 100];
     if (currentStreak > 0) {
       const milestone = milestones.find(m => currentStreak === m);
       if (milestone) setStreakMilestone(milestone);
     }
-  }, [currentStreak, setStreakMilestone, dataLoaded, userId]);
+  }, [currentStreak, setStreakMilestone, dataLoaded, user]);
 
 
   const renderActiveModal = () => {
@@ -142,6 +145,10 @@ const App: React.FC = () => {
     );
   }
 
+  if (!session || !user) {
+    return <Auth />;
+  }
+
   // Main App Body
   return (
     <>
@@ -163,7 +170,7 @@ const App: React.FC = () => {
               <Icon path="M12 4.5v15m7.5-7.5h-15" className="w-8 h-8" />
             </button>
             <button onClick={() => setActiveModal('chat')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
-                <Icon path="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" className="w-7 h-7" />
+                <Icon path="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" className="w-7 h-7" />
                 <span className="text-xs font-semibold">AI Coach</span>
             </button>
              <button onClick={() => setActiveModal('profile')} className="group flex-1 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors">

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { Meal } from '../types';
 import { analyzeMealConsumption } from '../services/geminiService';
-import { calculateTotalNutrition } from '../services/utils';
+import { calculateTotalNutrition, compressImage } from '../services/utils';
 import Card from './common/Card';
 import Loader from './common/Loader';
 import Icon from './common/Icon';
@@ -15,30 +15,38 @@ const UpdateMealWithPhoto: React.FC<{ meal: Meal }> = ({ meal }) => {
   const onClose = () => setActiveModal(null);
 
   const [afterImageUri, setAfterImageUri] = useState<string | null>(null);
+  const [compressedAfterImage, setCompressedAfterImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setError(null);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAfterImageUri(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      setAfterImageUri(URL.createObjectURL(file));
+      setIsLoading(true); // Show loader during compression
+      try {
+          const compressedBase64 = await compressImage(file);
+          setCompressedAfterImage(compressedBase64);
+      } catch(e) {
+          console.error("Compression error", e);
+          setError("Failed to process image");
+      } finally {
+          setIsLoading(false);
+      }
     }
   };
 
   const handleRecalculate = async () => {
-    if (!afterImageUri || !meal.imageUrlBefore) return;
+    if (!compressedAfterImage || !meal.imageUrlBefore) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const base64Before = meal.imageUrlBefore.split(',')[1];
-      const base64After = afterImageUri.split(',')[1];
+      // Ensure the before image is also raw base64 (remove prefix if present)
+      const base64Before = meal.imageUrlBefore.includes('base64,') ? meal.imageUrlBefore.split(',')[1] : meal.imageUrlBefore;
+      const base64After = compressedAfterImage;
 
       const newItems = await analyzeMealConsumption(base64Before, base64After);
       
@@ -52,7 +60,7 @@ const UpdateMealWithPhoto: React.FC<{ meal: Meal }> = ({ meal }) => {
         ...meal,
         items: newItems,
         nutrition: newTotalNutrition,
-        imageUrlAfter: afterImageUri,
+        imageUrlAfter: `data:image/jpeg;base64,${compressedAfterImage}`,
         name: meal.name.includes('(Updated)') ? meal.name : `${meal.name} (Updated)`,
       };
       
@@ -102,7 +110,7 @@ const UpdateMealWithPhoto: React.FC<{ meal: Meal }> = ({ meal }) => {
                 <p className="text-sm text-center text-gray-500 dark:text-gray-400">
                     Add a photo of your leftovers. The AI will compare it to the original photo to accurately calculate your meal's nutrition.
                 </p>
-                {isLoading && <Loader text="Analyzing consumption..." />}
+                {isLoading && <Loader text={compressedAfterImage ? "Analyzing consumption..." : "Processing image..."} />}
                 {error && <p className="text-center text-red-500">{error}</p>}
             </div>
 
@@ -116,7 +124,7 @@ const UpdateMealWithPhoto: React.FC<{ meal: Meal }> = ({ meal }) => {
         <footer className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
             <button 
                 onClick={handleRecalculate} 
-                disabled={!afterImageUri || isLoading}
+                disabled={!compressedAfterImage || isLoading}
                 className="w-full flex items-center justify-center gap-2 bg-teal-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-600 transition-colors disabled:bg-gray-400"
             >
                 {isLoading ? 'Recalculating...' : 'Recalculate & Update Meal'}

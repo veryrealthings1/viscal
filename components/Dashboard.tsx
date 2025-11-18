@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { Meal, NutritionInfo, UserProfile } from '../types';
 import Card from './common/Card';
@@ -163,6 +164,9 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-2">
             <button onClick={() => setActiveModal('liveCoach')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
                 <Icon path="M12 18.75a6 6 0 006-6v-1.5a6 6 0 00-12 0v1.5a6 6 0 006 6z" className="w-6 h-6"/>
+            </button>
+            <button onClick={() => setActiveModal('logExercise')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
+                <Icon path="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" className="w-6 h-6"/>
             </button>
             <button onClick={() => setActiveModal('diary')} className="p-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-full shadow-lg dark:shadow-black/20 text-gray-600 dark:text-gray-300 hover:text-teal-500 dark:hover:text-teal-400">
                 <Icon path="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.185 0 4.236.624 6 1.742m6-16.25a8.967 8.967 0 01-6 2.292m6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18c-2.185 0-4.236.624-6 1.742m6-16.25v16.25" className="w-6 h-6"/>

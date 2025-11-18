@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob, FunctionDeclaration, Type } from "@google/genai";
 import Card from './common/Card';
@@ -35,7 +36,7 @@ type ToolCallResult = ToolStatusResult | TodaysSummaryResult;
 
 
 const LiveCoachModal: React.FC = () => {
-    const { meals, userProfile, dailyGoal, addMeal, addWaterLog, todaysNutrition, todaysWaterIntake, setDailyGoal } = useData();
+    const { meals, userProfile, dailyGoal, addMeal, addWaterLog, todaysNutrition, todaysWaterIntake, setDailyGoal, waterLogs, exercises, currentStreak, todaysCaloriesBurned, unlockedAchievements } = useData();
     const { setActiveModal, showToast } = useUI();
     const onClose = () => setActiveModal(null);
 
@@ -129,15 +130,43 @@ const LiveCoachModal: React.FC = () => {
                 const date = new Date(m.date);
                 const day = date.toLocaleDateString('en-US', { weekday: 'short' });
                 return `- ${day}, ${m.mealType}: ${m.name}`;
-            }).slice(-10).join('\n'); // Keep it concise for voice
+            }).slice(-15).join('\n'); 
             
-            const systemInstruction = `You are a friendly, enthusiastic voice assistant for the VisionCal nutrition app. You have access to the user's recent meal log to understand their habits.
-- User Profile: Age ${userProfile.age}, Weight ${userProfile.weight}kg, Goal: ${userProfile.aspirations}.
-- Recent Meals Log:
-${mealHistorySummary || "No recent meals logged."}
-- When providing nutritional advice, it's critical that you understand the difference between individual healthy ingredients and a prepared dish. For example, while tomatoes are healthy, a hamburger containing them is often high in fat and sodium due to the ground meat, bun, and sauces. Always consider the context of the entire meal.
+            const exerciseSummary = exercises
+                .filter(e => new Date(e.date) >= sevenDaysAgo)
+                .map(e => `- ${e.name} (${e.durationMinutes} min)`)
+                .join('\n');
+
+            const waterSummary = `Avg daily water: ${Math.round(waterLogs.filter(w => new Date(w.date) >= sevenDaysAgo).reduce((acc, log) => acc + log.amount, 0) / 7 || 0)} ml`;
+            
+            const systemInstruction = `You are a friendly, enthusiastic voice assistant for the VisionCal nutrition app. You know the user well and have access to their full history.
+
+USER PROFILE (REMEMBER THIS):
+- Age: ${userProfile.age}
+- Weight: ${userProfile.weight} kg
+- Height: ${userProfile.height} cm
+- Goal: ${userProfile.aspirations}
+
+TODAY'S PROGRESS:
+- Calories: ${Math.round(todaysNutrition.calories)} / ${dailyGoal.calories} kcal
+- Protein: ${Math.round(todaysNutrition.protein)} / ${dailyGoal.protein} g
+- Water: ${Math.round(todaysWaterIntake)} / ${dailyGoal.waterGoal} ml
+- Burned: ${Math.round(todaysCaloriesBurned)} kcal
+- Streak: ${currentStreak} days
+- Achievements: ${unlockedAchievements.size} unlocked
+
+HISTORY (LAST 7 DAYS):
+Meals:
+${mealHistorySummary || "No recent meals."}
+
+Exercises:
+${exerciseSummary || "No exercises logged."}
+
+Hydration:
+${waterSummary}
+
+- Use this data to give personalized advice. Do NOT ask the user for this info.
 - Keep responses very short and conversational.
-- Use your knowledge of their past meals to give personalized advice.
 - Use tools to log meals/water and get summaries. Confirm actions clearly, e.g., "Okay, logged it!".
 - If the user asks for their summary, call getTodaysSummary.
 - If they want to log food, call logMeal with a description and inferred meal type.
@@ -257,7 +286,7 @@ ${mealHistorySummary || "No recent meals logged."}
             console.error(err);
             setStatus('error');
         }
-    }, [addMeal, addWaterLog, showToast, stopSession, todaysNutrition, todaysWaterIntake, userProfile, setDailyGoal, meals]);
+    }, [addMeal, addWaterLog, showToast, stopSession, todaysNutrition, todaysWaterIntake, userProfile, setDailyGoal, meals, waterLogs, exercises, currentStreak, todaysCaloriesBurned, unlockedAchievements]);
 
     const isSessionActive = status === 'listening' || status === 'speaking' || status === 'connecting';
 

@@ -85,7 +85,7 @@ const ProfileOnboarding: React.FC<ProfileOnboardingProps> = ({ onComplete }) => 
             // FIX: Changed NodeJS.Timeout to number, as setTimeout in a browser environment returns a number, not a NodeJS.Timeout object.
             const timers: number[] = [];
             calculationTasks.forEach((_, index) => {
-                timers.push(setTimeout(() => {
+                timers.push(window.setTimeout(() => {
                     setVisibleTasks(prev => [...prev, index]);
                 }, index * 700)); // Stagger the animation
             });
