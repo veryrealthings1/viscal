@@ -89,7 +89,8 @@
     </style>
     <!-- Polyfill for process.env to prevent "process is not defined" crash in browsers -->
     <script>
-      window.process = window.process || { env: {} };
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
     </script>
   <script type="importmap">
 {

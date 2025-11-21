@@ -1,9 +1,18 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { AnalyzedFoodItem, UserProfile, NutritionInfo, AnalyzedProduct, GoalSuggestion, MealSuggestion, WeeklyInsight, Meal, Recipe, Exercise, DailyInsight, AntiNutrient } from '../types';
 
-// Prevent crash if process.env is undefined during module load. 
+// Prevent crash if process.env is undefined during module load.
 // App.tsx checks for the actual key and blocks usage if missing.
-const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "";
+const getApiKey = () => {
+  try {
+    return (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : "";
+  } catch (e) {
+    return "";
+  }
+};
+
+const apiKey = getApiKey();
 
 export const ai = new GoogleGenAI({ apiKey });
 
